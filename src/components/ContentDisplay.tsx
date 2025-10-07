@@ -85,7 +85,6 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
       <ColumnHeader
         paliSelectedCount={selectedPaliIds.size}
         kannadaSelectedCount={selectedKannadaIds.size}
-        totalRows={contentRows.length}
         onSelectAllPali={onSelectAllPali}
         onSelectAllKannada={onSelectAllKannada}
         allPaliSelected={allPaliSelected}
@@ -110,7 +109,6 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
             <ContentRow
               key={row.id}
               row={row}
-              index={index}
               isPaliSelected={selectedPaliIds.has(row.id)}
               isKannadaSelected={selectedKannadaIds.has(row.id)}
               onPaliCheckboxChange={() => onPaliCheckboxChange(row.id)}

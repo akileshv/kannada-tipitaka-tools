@@ -6,7 +6,6 @@ const { Title } = Typography;
 interface ColumnHeaderProps {
   paliSelectedCount: number;
   kannadaSelectedCount: number;
-  totalRows: number;
   onSelectAllPali: () => void;
   onSelectAllKannada: () => void;
   allPaliSelected: boolean;
@@ -18,7 +17,6 @@ interface ColumnHeaderProps {
 export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   paliSelectedCount,
   kannadaSelectedCount,
-  totalRows,
   onSelectAllPali,
   onSelectAllKannada,
   allPaliSelected,

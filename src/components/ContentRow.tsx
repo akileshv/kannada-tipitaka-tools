@@ -1,14 +1,11 @@
 import React from 'react';
-import { Card, Row, Col, Space, Checkbox, Tag, Typography, Tooltip } from 'antd';
+import { Card, Row, Col, Space, Checkbox, Tag, Tooltip } from 'antd';
 import { TagOutlined } from '@ant-design/icons';
 import type { ContentRow as ContentRowType } from '../types';
 import { renderTextWithType } from '../utils/textRenderer';
 
-const { Text } = Typography;
-
 interface ContentRowProps {
   row: ContentRowType;
-  index: number;
   isPaliSelected: boolean;
   isKannadaSelected: boolean;
   onPaliCheckboxChange: () => void;
@@ -21,7 +18,6 @@ interface ContentRowProps {
 
 export const ContentRow: React.FC<ContentRowProps> = ({
   row,
-  index,
   isPaliSelected,
   isKannadaSelected,
   onPaliCheckboxChange,

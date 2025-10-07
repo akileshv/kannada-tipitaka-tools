@@ -139,9 +139,10 @@ const AppContent: React.FC = () => {
         messageApi.success(
           `${column === 'pali' ? 'Pali' : 'Kannada'} ${dataType} imported successfully (${count} rows)!`
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error processing file:', error);
-        messageApi.error(error.message || 'Failed to process file');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
+        messageApi.error(errorMessage);
       }
     };
 
@@ -251,6 +252,7 @@ const AppContent: React.FC = () => {
     const uniqueTags = [...new Set(allTags)];
 
     const mergedEntry = {
+      id: targetArray[firstIndex]?.id,
       text: mergedText,
       tags: uniqueTags,
       type: targetArray[firstIndex]?.type,
@@ -274,7 +276,7 @@ const AppContent: React.FC = () => {
     }
 
     messageApi.success(`${column} rows merged successfully!`);
-  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, reconstructRows, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
+  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
   // Delete content handler
   const handleDeleteContent = useCallback((column: 'pali' | 'kannada') => {
@@ -321,7 +323,7 @@ const AppContent: React.FC = () => {
         messageApi.success(`${column} content deleted successfully!`);
       }
     });
-  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, reconstructRows, messageApi, modalApi, setSelectedPaliIds, setSelectedKannadaIds]);
+  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, modalApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
   // Delete entire rows handler
   const handleDeleteEntireRows = useCallback(() => {
