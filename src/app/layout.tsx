@@ -1,20 +1,13 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import type { Metadata } from 'next';
+import { AntdRegistry } from '@ant-design/nextjs-registry';
+import '../styles.css';
 
 export const metadata: Metadata = {
-  title: "Bilingual Text Alignment Tool",
-  description: "Bilingual Text Alignment Tool",
+  title: 'Bilingual Text Alignment Tool',
+  description: 'Tool for aligning Pali and Kannada texts',
+  icons: {
+    icon: '/logo.svg',
+  },
 };
 
 export default function RootLayout({
@@ -24,8 +17,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
+      <body>
+        <AntdRegistry>{children}</AntdRegistry>
       </body>
     </html>
   );
