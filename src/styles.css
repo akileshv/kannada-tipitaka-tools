@@ -1,0 +1,332 @@
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1f1f1f;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #434343;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #595959;
+  }
+  
+  /* Card Animations */
+  .ant-card {
+    transition: all 0.3s ease;
+  }
+  
+  .ant-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  /* Button Animations */
+  .ant-btn {
+    transition: all 0.3s ease;
+  }
+  
+  .ant-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+  
+  .ant-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  /* Checkbox Styling */
+  .ant-checkbox-wrapper:hover .ant-checkbox-inner {
+    border-color: #1890ff;
+  }
+  
+  .ant-checkbox-checked .ant-checkbox-inner {
+    background-color: #1890ff;
+    border-color: #1890ff;
+  }
+  
+  /* Modal Styling */
+  .ant-modal-header {
+    background: #1f1f1f;
+    border-bottom: 1px solid #303030;
+  }
+  
+  .ant-modal-content {
+    background: #141414;
+  }
+  
+  .ant-modal-footer {
+    border-top: 1px solid #303030;
+  }
+  
+  /* Input Focus */
+  .ant-input:focus,
+  .ant-input-focused,
+  .ant-select-focused .ant-select-selector {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+  
+  /* Tag Animation */
+  .ant-tag {
+    animation: fadeIn 0.3s ease;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Empty State */
+  .ant-empty {
+    color: #8c8c8c;
+  }
+  
+  /* Card Small */
+  .ant-card-small > .ant-card-body {
+    padding: 12px;
+  }
+  
+  /* Divider */
+  .ant-divider-vertical {
+    border-left-color: #434343;
+  }
+  
+  /* Badge */
+  .ant-badge-count {
+    box-shadow: 0 0 0 1px #141414;
+  }
+  
+  /* Tooltip */
+  .ant-tooltip-inner {
+    background-color: #262626;
+    color: #fff;
+  }
+  
+  .ant-tooltip-arrow-content {
+    background-color: #262626;
+  }
+  
+  /* Select Dropdown */
+  .ant-select-dropdown {
+    background: #1f1f1f;
+  }
+  
+  .ant-select-item-option-selected {
+    background: #111b26;
+  }
+  
+  .ant-select-item-option-active {
+    background: #262626;
+  }
+  
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    color: rgba(255, 255, 255, 0.85);
+  }
+  
+  /* Selection */
+  ::selection {
+    background: rgba(24, 144, 255, 0.3);
+    color: #fff;
+  }
+  
+  *:focus-visible {
+    outline: 2px solid #1890ff;
+    outline-offset: 2px;
+  }
+  
+  /* Floating Action Buttons */
+  .ant-btn-circle {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .ant-btn-circle:not(:disabled):hover {
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6) !important;
+  }
+  
+  .ant-btn-circle:not(:disabled):active {
+    transform: scale(0.95);
+  }
+  
+  .ant-btn-circle:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  
+  /* Pulse Animation */
+  @keyframes pulseGlow {
+    0%, 100% {
+      box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+    }
+    50% {
+      box-shadow: 0 4px 20px rgba(24, 144, 255, 0.8);
+    }
+  }
+  
+  .ant-btn-circle:not(:disabled) {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+  
+  /* Collapse Styling */
+  .ant-collapse {
+    background: #1a1c21 !important;
+    border: 1px solid #2a2d34 !important;
+    border-radius: 8px !important;
+  }
+  
+  .ant-collapse-item {
+    border-bottom: none !important;
+  }
+  
+  .ant-collapse-header {
+    background: #1a1c21 !important;
+    color: #e0e3e7 !important;
+    padding: 16px 20px !important;
+    transition: all 0.25s ease-in-out !important;
+  }
+  
+  .ant-collapse-header:hover {
+    background: #1e2126 !important;
+  }
+  
+  .ant-collapse-content {
+    background: #16181c !important;
+    border-top: 1px solid #2a2d34 !important;
+  }
+  
+  .ant-collapse-content-box {
+    padding: 20px !important;
+  }
+  
+  .ant-collapse-expand-icon {
+    color: #00b3a4 !important;
+  }
+  
+  .ant-collapse-item-active .ant-collapse-expand-icon {
+    transform: rotate(90deg);
+  }
+  
+  /* Row Deletion Animation */
+  @keyframes slideOut {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+  }
+  
+  .row-deleting {
+    animation: slideOut 0.3s ease-out;
+  }
+  
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    .ant-card-body {
+      padding: 12px;
+    }
+  
+    .ant-space {
+      gap: 8px !important;
+    }
+  
+    .ant-col {
+      margin-bottom: 8px;
+    }
+  
+    .ant-btn {
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+  
+    .ant-modal {
+      max-width: calc(100vw - 16px);
+      margin: 8px auto;
+    }
+  
+    .ant-btn-circle {
+      width: 48px !important;
+      height: 48px !important;
+    }
+  
+    .ant-btn-circle .anticon {
+      font-size: 18px !important;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .ant-btn span:not(.anticon) {
+      display: none;
+    }
+  }
+  
+  /* Small Height Adjustments */
+  @media (max-height: 600px) {
+    div[style*="position: fixed"][style*="bottom: 24px"] {
+      bottom: 12px !important;
+      gap: 8px !important;
+    }
+  }
+  
+  /* Landscape Mode */
+  @media (max-height: 500px) and (orientation: landscape) {
+    div[style*="position: fixed"] {
+      gap: 6px !important;
+    }
+  
+    .ant-btn-circle {
+      width: 44px !important;
+      height: 44px !important;
+    }
+  }
+  
+  /* Print Styles */
+  @media print {
+    .ant-btn,
+    .ant-checkbox {
+      display: none !important;
+    }
+  
+    .ant-card {
+      page-break-inside: avoid;
+    }
+  
+    .ant-card:hover {
+      transform: none !important;
+    }
+
+    /* Clickable content areas */
+    .clickable-content {
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .clickable-content::after {
+        content: '✏️';
+        position: absolute;
+        right: 8px;
+        top: 8px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        font-size: 14px;
+    }
+    
+    .clickable-content:hover::after {
+        opacity: 0.5;
+    }
+  }
