@@ -173,60 +173,36 @@ export const EditModal: React.FC<EditModalProps> = ({
     onSaveKannada
   ]);
 
-  // Find functions - memoized
-  const findPreviousPaliIndex = useCallback(() => {
-    for (let i = currentPaliIndex - 1; i >= 0; i--) {
-      if (allRows[i]?.paliText?.trim()) {
-        return i;
-      }
-    }
-    return null;
-  }, [currentPaliIndex, allRows]);
-
-  const findNextPaliIndex = useCallback(() => {
-    for (let i = currentPaliIndex + 1; i < allRows.length; i++) {
-      if (allRows[i]?.paliText?.trim()) {
-        return i;
-      }
-    }
-    return null;
-  }, [currentPaliIndex, allRows]);
-
-  const findPreviousKannadaIndex = useCallback(() => {
-    for (let i = currentKannadaIndex - 1; i >= 0; i--) {
-      if (allRows[i]?.kannadaText?.trim()) {
-        return i;
-      }
-    }
-    return null;
-  }, [currentKannadaIndex, allRows]);
-
-  const findNextKannadaIndex = useCallback(() => {
-    for (let i = currentKannadaIndex + 1; i < allRows.length; i++) {
-      if (allRows[i]?.kannadaText?.trim()) {
-        return i;
-      }
-    }
-    return null;
-  }, [currentKannadaIndex, allRows]);
-
+  // ✅ FIXED: Navigate to ALL rows including empty ones
   const handleNavigatePali = useCallback((direction: 'prev' | 'next') => {
-    const targetIndex = direction === 'prev' 
-      ? findPreviousPaliIndex() 
-      : findNextPaliIndex();
-    if (targetIndex !== null) {
-      setCurrentPaliIndex(targetIndex);
+    if (direction === 'prev') {
+      if (currentPaliIndex > 0) {
+        setCurrentPaliIndex(currentPaliIndex - 1);
+      }
+    } else {
+      if (currentPaliIndex < allRows.length - 1) {
+        setCurrentPaliIndex(currentPaliIndex + 1);
+      }
     }
-  }, [findPreviousPaliIndex, findNextPaliIndex]);
+  }, [currentPaliIndex, allRows.length]);
 
   const handleNavigateKannada = useCallback((direction: 'prev' | 'next') => {
-    const targetIndex = direction === 'prev' 
-      ? findPreviousKannadaIndex() 
-      : findNextKannadaIndex();
-    if (targetIndex !== null) {
-      setCurrentKannadaIndex(targetIndex);
+    if (direction === 'prev') {
+      if (currentKannadaIndex > 0) {
+        setCurrentKannadaIndex(currentKannadaIndex - 1);
+      }
+    } else {
+      if (currentKannadaIndex < allRows.length - 1) {
+        setCurrentKannadaIndex(currentKannadaIndex + 1);
+      }
     }
-  }, [findPreviousKannadaIndex, findNextKannadaIndex]);
+  }, [currentKannadaIndex, allRows.length]);
+
+  // Helper functions for button states
+  const canNavigatePaliPrev = currentPaliIndex > 0;
+  const canNavigatePaliNext = currentPaliIndex < allRows.length - 1;
+  const canNavigateKannadaPrev = currentKannadaIndex > 0;
+  const canNavigateKannadaNext = currentKannadaIndex < allRows.length - 1;
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -264,11 +240,6 @@ export const EditModal: React.FC<EditModalProps> = ({
   const currentPaliRow = allRows[currentPaliIndex];
   const currentKannadaRow = allRows[currentKannadaIndex];
 
-  const previousPaliIndex = findPreviousPaliIndex();
-  const nextPaliIndex = findNextPaliIndex();
-  const previousKannadaIndex = findPreviousKannadaIndex();
-  const nextKannadaIndex = findNextKannadaIndex();
-
   const modalWidth = isFullscreen ? '98vw' : '90vw';
   const maxModalWidth = isFullscreen ? 'none' : '1400px';
 
@@ -293,14 +264,18 @@ export const EditModal: React.FC<EditModalProps> = ({
       open={visible}
       onCancel={onClose}
       width={modalWidth}
+      centered={!isFullscreen}
       style={{ 
         maxWidth: maxModalWidth,
         top: isFullscreen ? 10 : 20,
+        paddingBottom: isFullscreen ? 10 : 20,
       }}
       styles={{
         body: {
-          maxHeight: isFullscreen ? 'calc(100vh - 200px)' : 'calc(90vh - 200px)',
+          maxHeight: isFullscreen ? 'calc(100vh - 140px)' : 'calc(90vh - 160px)',
+          minHeight: isFullscreen ? 'calc(100vh - 140px)' : '60vh',
           overflowY: 'auto',
+          padding: '16px',
         }
       }}
       footer={null}
@@ -420,29 +395,29 @@ export const EditModal: React.FC<EditModalProps> = ({
             borderLeft: '3px solid #1890ff'
           }}>
             <Space>
-              <Button
-                icon={<LeftOutlined />}
-                onClick={() => handleNavigatePali('prev')}
-                disabled={previousPaliIndex === null}
-                size="small"
-                style={{ 
-                  borderColor: '#1890ff', 
-                  color: previousPaliIndex !== null ? '#1890ff' : '#666' 
-                }}
-              >
-                Previous Pali
-              </Button>
+            <Button
+              icon={<LeftOutlined />}
+              onClick={() => handleNavigatePali('prev')}
+              disabled={!canNavigatePaliPrev}
+              size="small"
+              style={{ 
+                borderColor: '#1890ff', 
+                color: canNavigatePaliPrev ? '#1890ff' : '#666' 
+              }}
+            >
+              Previous Pali
+            </Button>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 Ctrl+Shift+↑/↓
               </Text>
               <Button
                 icon={<RightOutlined />}
                 onClick={() => handleNavigatePali('next')}
-                disabled={nextPaliIndex === null}
+                disabled={!canNavigatePaliNext}
                 size="small"
                 style={{ 
                   borderColor: '#1890ff', 
-                  color: nextPaliIndex !== null ? '#1890ff' : '#666' 
+                  color: canNavigatePaliNext ? '#1890ff' : '#666' 
                 }}
               >
                 Next Pali
@@ -535,29 +510,29 @@ export const EditModal: React.FC<EditModalProps> = ({
             borderLeft: '3px solid #52c41a'
           }}>
             <Space>
-              <Button
-                icon={<LeftOutlined />}
-                onClick={() => handleNavigateKannada('prev')}
-                disabled={previousKannadaIndex === null}
-                size="small"
-                style={{ 
-                  borderColor: '#52c41a', 
-                  color: previousKannadaIndex !== null ? '#52c41a' : '#666' 
-                }}
-              >
-                Previous Kannada
-              </Button>
+            <Button
+              icon={<LeftOutlined />}
+              onClick={() => handleNavigateKannada('prev')}
+              disabled={!canNavigateKannadaPrev}
+              size="small"
+              style={{ 
+                borderColor: '#52c41a', 
+                color: canNavigateKannadaPrev ? '#52c41a' : '#666' 
+              }}
+            >
+              Previous Kannada
+            </Button>
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 Alt+↑/↓
               </Text>
               <Button
                 icon={<RightOutlined />}
                 onClick={() => handleNavigateKannada('next')}
-                disabled={nextKannadaIndex === null}
+                disabled={!canNavigateKannadaNext}
                 size="small"
                 style={{ 
                   borderColor: '#52c41a', 
-                  color: nextKannadaIndex !== null ? '#52c41a' : '#666' 
+                  color: canNavigateKannadaNext ? '#52c41a' : '#666' 
                 }}
               >
                 Next Kannada
