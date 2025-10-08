@@ -1,20 +1,21 @@
 import React from 'react';
 import { Card, Row, Col, Typography } from 'antd';
+import type { ContentRow } from '../types';
 
 const { Title, Text } = Typography;
 
 interface FooterProps {
-  totalRows: number;
-  historyLength: number;
-  taggedRowsCount: number;
+  contentRows: ContentRow[];
+  historyCount: number;
 }
 
-export const Footer: React.FC<FooterProps> = ({
-  totalRows,
-  historyLength,
-  taggedRowsCount,
-}) => {
-  if (totalRows === 0) return null;
+export const Footer: React.FC<FooterProps> = ({ contentRows, historyCount }) => {
+  if (contentRows.length === 0) return null;
+
+  const taggedCount = contentRows.filter(row => 
+    (row.paliTags && row.paliTags.length > 0) || 
+    (row.kannadaTags && row.kannadaTags.length > 0)
+  ).length;
 
   return (
     <Card 
@@ -29,7 +30,7 @@ export const Footer: React.FC<FooterProps> = ({
         <Col xs={24} sm={8}>
           <div style={{ textAlign: 'center', padding: '8px' }}>
             <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-              {totalRows}
+              {contentRows.length}
             </Title>
             <Text type="secondary">Total Rows</Text>
           </div>
@@ -37,7 +38,7 @@ export const Footer: React.FC<FooterProps> = ({
         <Col xs={24} sm={8}>
           <div style={{ textAlign: 'center', padding: '8px' }}>
             <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
-              {historyLength}
+              {historyCount}
             </Title>
             <Text type="secondary">History States</Text>
           </div>
@@ -45,7 +46,7 @@ export const Footer: React.FC<FooterProps> = ({
         <Col xs={24} sm={8}>
           <div style={{ textAlign: 'center', padding: '8px' }}>
             <Title level={4} style={{ margin: 0, color: '#faad14' }}>
-              {taggedRowsCount}
+              {taggedCount}
             </Title>
             <Text type="secondary">Tagged Rows</Text>
           </div>

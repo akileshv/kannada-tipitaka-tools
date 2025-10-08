@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ConfigProvider, theme, App as AntApp } from 'antd';
-import { Spin } from 'antd';
+import { App as AntApp } from 'antd';
 import type { ContentRow } from './types';
-
-// Components
+import { setupConsoleOverride } from './utils/consoleOverride';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { useHistory } from './hooks/useHistory';
+import { useSelection } from './hooks/useSelection';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { parseFileContent, exportData, downloadJSON } from './utils/fileHandlers';
+import { toArrayFormat, reconstructRows } from './utils/rowOperations';
 import { Header } from './components/Header';
 import { UploadSection } from './components/UploadSection';
 import { ActionPanel } from './components/ActionPanel';
@@ -14,19 +18,7 @@ import { Footer } from './components/Footer';
 import { EditModal } from './components/modals/EditModal';
 import { TagModal } from './components/modals/TagModal';
 import { ClearModal } from './components/modals/ClearModal';
-
-// Hooks
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { useHistory } from './hooks/useHistory';
-import { useSelection } from './hooks/useSelection';
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-
-// Utils
-import { setupConsoleOverride } from './utils/consoleOverride';
-import { parseFileContent, exportData, downloadJSON } from './utils/fileHandlers';
-import { reconstructRows, splitRowText, toArrayFormat } from './utils/rowOperations';
-
-// Styles
+import { AppProviders } from './components/AppProviders';
 import './styles.css';
 
 setupConsoleOverride();
@@ -40,20 +32,15 @@ const AppContent: React.FC = () => {
   const [showUploadSection, setShowUploadSection] = useState(true);
 
   // Custom hooks
-  const {
-    loadFromLocalStorage,
-    saveToLocalStorage,
-    clearLocalStorage,
-  } = useLocalStorage(messageApi);
-
+  const { loadFromLocalStorage, saveToLocalStorage, clearLocalStorage } = useLocalStorage(messageApi);
   const {
     history,
     historyIndex,
     setHistory,
     setHistoryIndex,
     addToHistory,
-    handleUndo,
-    handleRedo,
+    handleUndo: performUndo,
+    handleRedo: performRedo,
   } = useHistory();
 
   const {
@@ -69,14 +56,8 @@ const AppContent: React.FC = () => {
   // Modal states
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingRow, setEditingRow] = useState<ContentRow | null>(null);
-  const [editColumn, setEditColumn] = useState<'pali' | 'kannada'>('pali');
-  const [editText, setEditText] = useState('');
 
   const [isTagModalVisible, setIsTagModalVisible] = useState(false);
-  const [tagInput, setTagInput] = useState('');
-  const [tagItems, setTagItems] = useState<string[]>([]);
-  const [typeInput, setTypeInput] = useState<string>('');
-  const [typenameInput, setTypenameInput] = useState<string>('');
   const [currentTagColumn, setCurrentTagColumn] = useState<'pali' | 'kannada'>('pali');
 
   const [isClearModalVisible, setIsClearModalVisible] = useState(false);
@@ -90,85 +71,117 @@ const AppContent: React.FC = () => {
     setIsLoading(false);
   }, [loadFromLocalStorage, setHistory, setHistoryIndex]);
 
-  // Keyboard shortcuts
-  const performUndo = useCallback(() => {
-    const prevState = handleUndo();
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    const prevState = performUndo();
     if (prevState) {
       setContentRows(prevState.contentRows);
       setSelectedPaliIds(new Set(prevState.selectedPaliIds));
       setSelectedKannadaIds(new Set(prevState.selectedKannadaIds));
       messageApi.info('Undo successful');
     }
-  }, [handleUndo, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
+  }, [performUndo, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
-  const performRedo = useCallback(() => {
-    const nextState = handleRedo();
+  const handleRedo = useCallback(() => {
+    const nextState = performRedo();
     if (nextState) {
       setContentRows(nextState.contentRows);
       setSelectedPaliIds(new Set(nextState.selectedPaliIds));
       setSelectedKannadaIds(new Set(nextState.selectedKannadaIds));
       messageApi.info('Redo successful');
     }
-  }, [handleRedo, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
+  }, [performRedo, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
+  // Keyboard shortcuts
   useKeyboardShortcuts({
-    onUndo: performUndo,
-    onRedo: performRedo,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,
   });
 
   // File upload handler
   const handleFileUpload = useCallback((file: File, column: 'pali' | 'kannada') => {
-    const fileName = file.name.toLowerCase();
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-
-      try {
-        const newRows = parseFileContent(content, fileName, column, contentRows);
-        addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-        setContentRows(newRows);
-        
-        const dataType = fileName.endsWith('.json') ? 'JSON' : 'text';
-        const count = fileName.endsWith('.json') 
-          ? JSON.parse(content).length 
-          : content.split('\n').filter(line => line.trim()).length;
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        try {
+          const newRows = parseFileContent(content, file.name, column, contentRows);
+          addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
+          setContentRows(newRows);
           
-        messageApi.success(
-          `${column === 'pali' ? 'Pali' : 'Kannada'} ${dataType} imported successfully (${count} rows)!`
-        );
-      } catch (error: unknown) {
-        console.error('Error processing file:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
-        messageApi.error(errorMessage);
-      }
-    };
-
-    reader.onerror = () => messageApi.error('Error reading file');
-    reader.readAsText(file);
+          const fileType = file.name.endsWith('.json') ? 'JSON' : 'text';
+          const rowCount = file.name.endsWith('.json') 
+            ? JSON.parse(content).length 
+            : content.split('\n').filter(l => l.trim()).length;
+          
+          messageApi.success(
+            `${column === 'pali' ? 'Pali' : 'Kannada'} ${fileType} imported successfully (${rowCount} rows)!`
+          );
+        } catch (error: unknown) {
+          messageApi.error(error instanceof Error ? error.message : 'Failed to process file');
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
+      messageApi.error(errorMessage);
+    }
     return false;
-  }, [contentRows, addToHistory, selectedPaliIds, selectedKannadaIds, messageApi]);
+  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi]);
 
   // Edit modal handlers
-  const openEditModal = useCallback((row: ContentRow, column: 'pali' | 'kannada') => {
+  const openEditModal = useCallback((row: ContentRow) => {
     setEditingRow(row);
-    setEditColumn(column);
-    setEditText(column === 'pali' ? row.paliText : row.kannadaText);
     setIsEditModalVisible(true);
   }, []);
 
-  const handleEditSave = useCallback(() => {
-    if (!editingRow) return;
+  const handleNavigateRow = useCallback((rowId: string) => {
+    const row = contentRows.find(r => r.id === rowId);
+    if (row) {
+      setEditingRow(row);
+    }
+  }, [contentRows]);
 
-    const lines = editText.split('\n');
-
-    if (lines.length === 1 && lines[0].trim() === '') {
-      const newRows = contentRows.map(row => {
-        if (row.id === editingRow.id) {
-          const updatedRow = { ...row };
-          if (editColumn === 'pali') {
+  const handleEditSave = useCallback((
+    rowId: string,
+    column: 'pali' | 'kannada',
+    newText: string,
+    otherColumnText: string,
+    otherColumnRowId: string
+  ) => {
+    const row = contentRows.find(r => r.id === rowId);
+    if (!row) {
+      messageApi.error('Row not found');
+      return;
+    }
+  
+    const lines = newText.split('\n');
+    const otherColumnRow = contentRows.find(r => r.id === otherColumnRowId);
+  
+    // Check if other column was edited
+    const otherColumnOriginalText = otherColumnRow 
+      ? (column === 'pali' ? otherColumnRow.kannadaText : otherColumnRow.paliText)
+      : '';
+    const otherColumnWasEdited = otherColumnText !== otherColumnOriginalText;
+  
+    console.log('🔍 Save Debug:', {
+      column,
+      rowId,
+      otherColumnRowId,
+      sameRow: rowId === otherColumnRowId,
+      lineCount: lines.length,
+      otherColumnWasEdited,
+      otherColumnHasNewlines: otherColumnText.includes('\n'),
+    });
+  
+    // ✅ CASE 1: Empty content - clear the row
+    if (newText.trim() === '') {
+      const newRows = contentRows.map(r => {
+        if (r.id === rowId) {
+          const updatedRow = { ...r };
+          if (column === 'pali') {
             updatedRow.paliText = '';
             updatedRow.paliTags = [];
             updatedRow.paliType = undefined;
@@ -181,43 +194,163 @@ const AppContent: React.FC = () => {
           }
           return updatedRow;
         }
-        return row;
+        if (otherColumnWasEdited && r.id === otherColumnRowId) {
+          const updatedRow = { ...r };
+          if (column === 'pali') {
+            updatedRow.kannadaText = otherColumnText;
+          } else {
+            updatedRow.paliText = otherColumnText;
+          }
+          return updatedRow;
+        }
+        return r;
       });
       
       addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
       setContentRows(newRows);
-      setIsEditModalVisible(false);
-      messageApi.success(`${editColumn} content cleared!`);
+      messageApi.success(`${column} content cleared!`);
+      
+      const updatedRow = newRows.find(r => r.id === rowId);
+      if (updatedRow) setEditingRow(updatedRow);
       return;
     }
-
-    if (lines.length === 1) {
-      const newRows = contentRows.map(row => {
-        if (row.id === editingRow.id) {
-          const updatedRow = { ...row };
-          if (editColumn === 'pali') {
+  
+    // ✅ CASE 2: Single line (no newlines) - simple update
+    if (lines.length === 1 && !otherColumnText.includes('\n')) {
+      const newRows = contentRows.map(r => {
+        if (r.id === rowId) {
+          const updatedRow = { ...r };
+          if (column === 'pali') {
             updatedRow.paliText = lines[0];
           } else {
             updatedRow.kannadaText = lines[0];
           }
           return updatedRow;
         }
-        return row;
+        if (otherColumnWasEdited && r.id === otherColumnRowId) {
+          const updatedRow = { ...r };
+          if (column === 'pali') {
+            updatedRow.kannadaText = otherColumnText;
+          } else {
+            updatedRow.paliText = otherColumnText;
+          }
+          return updatedRow;
+        }
+        return r;
       });
+      
       addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
       setContentRows(newRows);
-    } else {
-      const newRows = contentRows.filter(row => row.id !== editingRow.id);
-      const editIndex = contentRows.findIndex(row => row.id === editingRow.id);
-      const updatedRows = splitRowText(editingRow, editColumn, editText);
-      newRows.splice(editIndex, 0, ...updatedRows);
-      addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-      setContentRows(newRows);
+      
+      const message = otherColumnWasEdited 
+        ? `Both columns saved successfully!`
+        : `${column} content updated!`;
+      messageApi.success(message);
+      
+      const updatedRow = newRows.find(r => r.id === rowId);
+      if (updatedRow) setEditingRow(updatedRow);
+      return;
     }
-
-    setIsEditModalVisible(false);
-    messageApi.success(`${editColumn} content updated successfully!`);
-  }, [editingRow, editText, editColumn, contentRows, addToHistory, selectedPaliIds, selectedKannadaIds, messageApi]);
+  
+    // ✅ CASE 3: Multiple lines OR other column has newlines - SPLIT LOGIC
+    console.log('🔪 Splitting logic - processing both columns');
+    
+    const { paliArray, kannadaArray } = toArrayFormat(contentRows);
+    const targetIndex = contentRows.findIndex(r => r.id === rowId);
+    
+    if (targetIndex === -1) {
+      messageApi.error('Target row not found');
+      return;
+    }
+  
+    const targetArray = column === 'pali' ? paliArray : kannadaArray;
+    const otherArray = column === 'pali' ? kannadaArray : paliArray;
+    const originalEntry = targetArray[targetIndex];
+  
+    console.log('📍 Target index:', targetIndex);
+  
+    // ✅ Process the main column (split if needed)
+    targetArray.splice(targetIndex, 1);
+    const newEntries = lines.map((line, i) => ({
+      text: line,
+      tags: originalEntry?.tags || [],
+      type: i === 0 ? originalEntry?.type : undefined,
+      typename: i === 0 ? originalEntry?.typename : undefined,
+    }));
+    targetArray.splice(targetIndex, 0, ...newEntries);
+  
+    console.log('✅ Main column split into', newEntries.length, 'entries');
+  
+    // ✅ Process the OTHER column if edited
+    if (otherColumnWasEdited) {
+      const otherColumnRowIndex = contentRows.findIndex(r => r.id === otherColumnRowId);
+      
+      if (otherColumnRowIndex === -1) {
+        console.warn('⚠️ Other column row not found');
+      } else {
+        const otherColumnLines = otherColumnText.split('\n');
+        const otherColumnOriginalEntry = otherArray[otherColumnRowIndex];
+        
+        // ✅ If other column also has newlines, split it too!
+        if (otherColumnLines.length > 1) {
+          console.log('🔪 Other column also has newlines, splitting it too');
+          
+          // Remove original entry
+          otherArray.splice(otherColumnRowIndex, 1);
+          
+          // Create new entries for other column
+          const otherNewEntries = otherColumnLines.map((line, i) => ({
+            text: line,
+            tags: otherColumnOriginalEntry?.tags || [],
+            type: i === 0 ? otherColumnOriginalEntry?.type : undefined,
+            typename: i === 0 ? otherColumnOriginalEntry?.typename : undefined,
+          }));
+          
+          // Insert at the same index
+          otherArray.splice(otherColumnRowIndex, 0, ...otherNewEntries);
+          
+          console.log('✅ Other column split into', otherNewEntries.length, 'entries');
+        } else {
+          // Single line - just update
+          console.log('📝 Other column is single line, updating');
+          if (otherArray[otherColumnRowIndex]) {
+            otherArray[otherColumnRowIndex].text = otherColumnText;
+          }
+        }
+      }
+    }
+  
+    console.log('🔄 Reconstructing rows...');
+    console.log('Pali array length:', paliArray.length);
+    console.log('Kannada array length:', kannadaArray.length);
+  
+    // Reconstruct with ID preservation
+    const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
+    
+    console.log('✅ New rows count:', newRows.length);
+    
+    addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
+    setContentRows(newRows);
+    
+    // Success message
+    let message = `${column} content split into ${lines.length} lines!`;
+    if (otherColumnWasEdited) {
+      const otherColumnName = column === 'pali' ? 'Kannada' : 'Pali';
+      const otherColumnLines = otherColumnText.split('\n');
+      if (otherColumnLines.length > 1) {
+        message = `Both columns split! ${column}: ${lines.length} lines, ${otherColumnName}: ${otherColumnLines.length} lines`;
+      } else {
+        message += ` ${otherColumnName} also saved.`;
+      }
+    }
+    
+    messageApi.success(message, 5);
+    
+    // Update editing row to the first split row
+    if (newRows[targetIndex]) {
+      setEditingRow(newRows[targetIndex]);
+    }
+  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setEditingRow]);
 
   // Merge handler
   const handleMerge = useCallback((column: 'pali' | 'kannada') => {
@@ -252,7 +385,6 @@ const AppContent: React.FC = () => {
     const uniqueTags = [...new Set(allTags)];
 
     const mergedEntry = {
-      id: targetArray[firstIndex]?.id,
       text: mergedText,
       tags: uniqueTags,
       type: targetArray[firstIndex]?.type,
@@ -350,99 +482,7 @@ const AppContent: React.FC = () => {
     });
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, modalApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
-  // Tag modal handlers - For action panel (multiple rows)
-  const openTagModal = useCallback((column: 'pali' | 'kannada') => {
-    setCurrentTagColumn(column);
-    setTagItems([]);
-    setTagInput('');
-    setTypeInput('');
-    setTypenameInput('');
-    setIsTagModalVisible(true);
-  }, []);
-
-  // ✅ NEW: Open tag modal with pre-filled data for a specific row
-  const openTagModalForRow = useCallback((row: ContentRow, column: 'pali' | 'kannada') => {
-    setCurrentTagColumn(column);
-    
-    // Pre-fill with existing data
-    if (column === 'pali') {
-      setTagItems(row.paliTags || []);
-      setTypeInput(row.paliType || '');
-      setTypenameInput(row.paliTypename || '');
-    } else {
-      setTagItems(row.kannadaTags || []);
-      setTypeInput(row.kannadaType || '');
-      setTypenameInput(row.kannadaTypename || '');
-    }
-    
-    // Auto-select this row
-    if (column === 'pali') {
-      setSelectedPaliIds(new Set([row.id]));
-    } else {
-      setSelectedKannadaIds(new Set([row.id]));
-    }
-    
-    setTagInput('');
-    setIsTagModalVisible(true);
-  }, [setSelectedPaliIds, setSelectedKannadaIds]);
-
-  const handleAddTag = useCallback(() => {
-    if (tagInput.trim() && !tagItems.includes(tagInput.trim())) {
-      setTagItems([...tagItems, tagInput.trim()]);
-      setTagInput('');
-    }
-  }, [tagInput, tagItems]);
-
-  const handleRemoveTag = useCallback((tagToRemove: string) => {
-    setTagItems(tagItems.filter(tag => tag !== tagToRemove));
-  }, [tagItems]);
-
-  const handleAddTags = useCallback(() => {
-    const selectedIds = currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds;
-
-    if (selectedIds.size === 0) {
-      messageApi.warning(`Please select ${currentTagColumn} rows to add tags to`);
-      return;
-    }
-
-    const newRows = contentRows.map(row => {
-      if (selectedIds.has(row.id)) {
-        const updatedRow = { ...row };
-        
-        if (currentTagColumn === 'pali') {
-          if (tagItems.length > 0) {
-            const existingTags = row.paliTags || [];
-            const uniqueTags = [...new Set([...existingTags, ...tagItems])];
-            updatedRow.paliTags = uniqueTags;
-          }
-          if (typeInput) updatedRow.paliType = typeInput;
-          if (typenameInput) updatedRow.paliTypename = typenameInput;
-        } else {
-          if (tagItems.length > 0) {
-            const existingTags = row.kannadaTags || [];
-            const uniqueTags = [...new Set([...existingTags, ...tagItems])];
-            updatedRow.kannadaTags = uniqueTags;
-          }
-          if (typeInput) updatedRow.kannadaType = typeInput;
-          if (typenameInput) updatedRow.kannadaTypename = typenameInput;
-        }
-        
-        return updatedRow;
-      }
-      return row;
-    });
-
-    addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-    setContentRows(newRows);
-    setIsTagModalVisible(false);
-    setTagItems([]);
-    setTagInput('');
-    setTypeInput('');
-    setTypenameInput('');
-    messageApi.success(`Tags and types added to ${currentTagColumn} content successfully!`);
-  }, [contentRows, selectedPaliIds, selectedKannadaIds, currentTagColumn, tagItems, typeInput, typenameInput, addToHistory, messageApi]);
-
-  // Export handlers
+  // Export handler
   const handleExport = useCallback((exportType: 'both' | 'pali' | 'kannada') => {
     if (contentRows.length === 0) {
       messageApi.warning('No content to export');
@@ -460,7 +500,7 @@ const AppContent: React.FC = () => {
     messageApi.success(`${count} row(s) exported successfully!`);
   }, [contentRows, messageApi]);
 
-  // Clear all data
+  // Clear all handler
   const handleClearAll = useCallback(() => {
     clearLocalStorage();
     setContentRows([]);
@@ -472,18 +512,6 @@ const AppContent: React.FC = () => {
     messageApi.success('All data cleared successfully!');
   }, [clearLocalStorage, setHistory, setHistoryIndex, setSelectedPaliIds, setSelectedKannadaIds, messageApi]);
 
-  // Save to localStorage wrapper
-  const handleSave = useCallback(() => {
-    saveToLocalStorage(contentRows, history, historyIndex);
-  }, [saveToLocalStorage, contentRows, history, historyIndex]);
-
-  const hasPaliSelection = selectedPaliIds.size > 0;
-  const hasKannadaSelection = selectedKannadaIds.size > 0;
-  const taggedRowsCount = contentRows.filter(row => 
-    (row.paliTags && row.paliTags.length > 0) || 
-    (row.kannadaTags && row.kannadaTags.length > 0)
-  ).length;
-
   if (isLoading) {
     return (
       <div style={{
@@ -491,11 +519,9 @@ const AppContent: React.FC = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: '#141414'
+        backgroundColor: '#0e0f13'
       }}>
-        <Spin size="large">
-          <div style={{ padding: '50px' }} />
-        </Spin>
+        <div>Loading...</div>
       </div>
     );
   }
@@ -512,16 +538,22 @@ const AppContent: React.FC = () => {
         />
 
         <ActionPanel
-          hasPaliSelection={hasPaliSelection}
-          hasKannadaSelection={hasKannadaSelection}
+          hasPaliSelection={selectedPaliIds.size > 0}
+          hasKannadaSelection={selectedKannadaIds.size > 0}
           selectedPaliCount={selectedPaliIds.size}
           selectedKannadaCount={selectedKannadaIds.size}
           onMergePali={() => handleMerge('pali')}
           onMergeKannada={() => handleMerge('kannada')}
           onDeletePaliContent={() => handleDeleteContent('pali')}
           onDeleteKannadaContent={() => handleDeleteContent('kannada')}
-          onAddPaliTags={() => openTagModal('pali')}
-          onAddKannadaTags={() => openTagModal('kannada')}
+          onAddPaliTags={() => {
+            setCurrentTagColumn('pali');
+            setIsTagModalVisible(true);
+          }}
+          onAddKannadaTags={() => {
+            setCurrentTagColumn('kannada');
+            setIsTagModalVisible(true);
+          }}
           onDeleteEntireRows={handleDeleteEntireRows}
           onClearPaliSelection={() => clearSelection('pali')}
           onClearKannadaSelection={() => clearSelection('kannada')}
@@ -531,131 +563,92 @@ const AppContent: React.FC = () => {
           contentRows={contentRows}
           selectedPaliIds={selectedPaliIds}
           selectedKannadaIds={selectedKannadaIds}
-          onPaliCheckboxChange={(id) => handleCheckboxChange(id, 'pali')}
-          onKannadaCheckboxChange={(id) => handleCheckboxChange(id, 'kannada')}
-          onSelectAllPali={() => handleSelectAll('pali', contentRows)}
-          onSelectAllKannada={() => handleSelectAll('kannada', contentRows)}
-          onEditPali={(row) => openEditModal(row, 'pali')}
-          onEditKannada={(row) => openEditModal(row, 'kannada')}
-          onOpenPaliTagModal={(row) => openTagModalForRow(row, 'pali')}      // ✅ PASS THE FUNCTION
-          onOpenKannadaTagModal={(row) => openTagModalForRow(row, 'kannada')} // ✅ PASS THE FUNCTION
-          onSave={handleSave}
-          onClear={() => setIsClearModalVisible(true)}
-          onExportPali={() => handleExport('pali')}
-          onExportKannada={() => handleExport('kannada')}
-          onExportBoth={() => handleExport('both')}
-          onUndo={performUndo}
-          onRedo={performRedo}
+          onSelectAll={(column) => handleSelectAll(column, contentRows)}
+          onCheckboxChange={handleCheckboxChange}
+          onEdit={openEditModal}
+          onSave={() => saveToLocalStorage(contentRows, history, historyIndex)}
+          onExport={handleExport}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onClearAll={() => setIsClearModalVisible(true)}
           canUndo={historyIndex > 0}
           canRedo={historyIndex < history.length - 1}
-          historyIndex={historyIndex}
-          historyLength={history.length}
+          historyCount={history.length}
         />
 
+        <Footer contentRows={contentRows} historyCount={history.length} />
+
+        {/* Modals */}
         <EditModal
           visible={isEditModalVisible}
-          column={editColumn}
-          text={editText}
-          onTextChange={setEditText}
-          onSave={handleEditSave}
-          onCancel={() => setIsEditModalVisible(false)}
+          editingRow={editingRow}
+          allRows={contentRows}
+          onClose={() => setIsEditModalVisible(false)}
+          onSavePali={(rowId, text, otherColumnText, otherColumnRowId) => 
+            handleEditSave(rowId, 'pali', text, otherColumnText, otherColumnRowId)
+          }
+          onSaveKannada={(rowId, text, otherColumnText, otherColumnRowId) => 
+            handleEditSave(rowId, 'kannada', text, otherColumnText, otherColumnRowId)
+          }
+          onNavigate={handleNavigateRow}
         />
 
         <TagModal
           visible={isTagModalVisible}
           column={currentTagColumn}
-          tagInput={tagInput}
-          tagItems={tagItems}
-          typeInput={typeInput}
-          typenameInput={typenameInput}
-          onTagInputChange={setTagInput}
-          onAddTag={handleAddTag}
-          onRemoveTag={handleRemoveTag}
-          onTypeChange={setTypeInput}
-          onTypenameChange={setTypenameInput}
-          onApply={handleAddTags}
-          onCancel={() => {
+          selectedIds={currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds}
+          onClose={() => setIsTagModalVisible(false)}
+          onApply={(tags, type, typename) => {
+            const selectedIds = currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds;
+            
+            const newRows = contentRows.map(row => {
+              if (selectedIds.has(row.id)) {
+                const updatedRow = { ...row };
+                
+                if (currentTagColumn === 'pali') {
+                  if (tags.length > 0) {
+                    const existingTags = row.paliTags || [];
+                    updatedRow.paliTags = [...new Set([...existingTags, ...tags])];
+                  }
+                  if (type) updatedRow.paliType = type;
+                  if (typename) updatedRow.paliTypename = typename;
+                } else {
+                  if (tags.length > 0) {
+                    const existingTags = row.kannadaTags || [];
+                    updatedRow.kannadaTags = [...new Set([...existingTags, ...tags])];
+                  }
+                  if (type) updatedRow.kannadaType = type;
+                  if (typename) updatedRow.kannadaTypename = typename;
+                }
+                
+                return updatedRow;
+              }
+              return row;
+            });
+
+            addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
+            setContentRows(newRows);
             setIsTagModalVisible(false);
-            setTagItems([]);
-            setTagInput('');
-            setTypeInput('');
-            setTypenameInput('');
+            messageApi.success(`Tags and types added to ${currentTagColumn} content successfully!`);
           }}
         />
 
         <ClearModal
           visible={isClearModalVisible}
-          contentRowsCount={contentRows.length}
-          historyLength={history.length}
+          rowCount={contentRows.length}
+          historyCount={history.length}
           onConfirm={handleClearAll}
           onCancel={() => setIsClearModalVisible(false)}
-        />
-
-        <Footer
-          totalRows={contentRows.length}
-          historyLength={history.length}
-          taggedRowsCount={taggedRowsCount}
         />
       </div>
     </div>
   );
 };
 
-const App: React.FC = () => {
+export default function App() {
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorBgBase: '#0e0f13',
-          colorBgContainer: '#1a1c21',
-          colorBorder: '#2a2d34',
-          colorText: '#e0e3e7',
-          colorTextSecondary: '#a0a3aa',
-          colorPrimary: '#00b3a4',
-          colorSuccess: '#30c48d',
-          colorError: '#ff5c5c',
-          colorWarning: '#f1a43c',
-          colorInfo: '#37a2f2',
-          borderRadius: 8,
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          fontSize: 14,
-          lineHeight: 1.6,
-        },
-        components: {
-          Card: {
-            colorBgContainer: '#1a1c21',
-            colorBorder: '#2a2d34',
-          },
-          Button: {
-            colorPrimary: '#00b3a4',
-            colorPrimaryHover: '#00c9b8',
-            algorithm: true,
-          },
-          Input: {
-            colorBgContainer: '#16181c',
-            colorBorder: '#2a2d34',
-          },
-          Select: {
-            colorBgContainer: '#16181c',
-            colorBorder: '#2a2d34',
-          },
-          Modal: {
-            colorBgElevated: '#1a1c21',
-            headerBg: '#16181c',
-          },
-          Upload: {
-            colorBgContainer: '#16181c',
-            colorBorder: '#2a2d34',
-          },
-        },
-      }}
-    >
-      <AntApp>
-        <AppContent />
-      </AntApp>
-    </ConfigProvider>
+    <AppProviders>
+      <AppContent />
+    </AppProviders>
   );
-};
-
-export default App;
+}

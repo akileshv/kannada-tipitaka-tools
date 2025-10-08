@@ -6,16 +6,16 @@ const { Text } = Typography;
 
 interface ClearModalProps {
   visible: boolean;
-  contentRowsCount: number;
-  historyLength: number;
+  rowCount: number;
+  historyCount: number;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 export const ClearModal: React.FC<ClearModalProps> = ({
   visible,
-  contentRowsCount,
-  historyLength,
+  rowCount,
+  historyCount,
   onConfirm,
   onCancel,
 }) => {
@@ -42,21 +42,32 @@ export const ClearModal: React.FC<ClearModalProps> = ({
           borderRadius: '6px',
           border: '1px solid #ff4d4f'
         }}>
-          <Text style={{ fontSize: '16px' }}>
-            <strong>Warning:</strong> This action cannot be undone!
+          <Text style={{ fontSize: '16px', color: '#ff4d4f' }}>
+            <strong>⚠️ Warning:</strong> This action cannot be undone!
           </Text>
         </div>
         
         <div>
-          <Text>
+          <Text style={{ color: '#e0e3e7' }}>
             Are you sure you want to clear all data? This will permanently remove:
           </Text>
-          <ul style={{ marginTop: '12px', color: '#8c8c8c' }}>
-            <li>All content rows ({contentRowsCount} rows)</li>
-            <li>Complete edit history ({historyLength} states)</li>
+          <ul style={{ marginTop: '12px', color: '#a0a3aa' }}>
+            <li>All content rows ({rowCount} rows)</li>
+            <li>Complete edit history ({historyCount} states)</li>
             <li>All tags and metadata</li>
             <li>All saved progress</li>
           </ul>
+        </div>
+        
+        <div style={{ 
+          padding: '12px', 
+          background: '#1f1f1f', 
+          borderRadius: '6px',
+          borderLeft: '3px solid #faad14'
+        }}>
+          <Text type="secondary">
+            <strong>Tip:</strong> Consider exporting your data before clearing if you might need it later.
+          </Text>
         </div>
       </Space>
     </Modal>

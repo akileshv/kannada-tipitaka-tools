@@ -2,39 +2,32 @@ import React from 'react';
 import { Space, Button, Tooltip, Dropdown } from 'antd';
 import {
   SaveOutlined,
-  ClearOutlined,
   DownloadOutlined,
   UndoOutlined,
   RedoOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 
 interface ActionBarProps {
   onSave: () => void;
-  onClear: () => void;
-  onExportPali: () => void;
-  onExportKannada: () => void;
-  onExportBoth: () => void;
+  onExport: (type: 'both' | 'pali' | 'kannada') => void;
   onUndo: () => void;
   onRedo: () => void;
+  onClearAll: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  historyIndex: number;
-  historyLength: number;
+  historyCount: number;
   hasContent: boolean;
 }
 
 export const ActionBar: React.FC<ActionBarProps> = ({
   onSave,
-  onClear,
-  onExportPali,
-  onExportKannada,
-  onExportBoth,
+  onExport,
   onUndo,
   onRedo,
+  onClearAll,
   canUndo,
   canRedo,
-  historyIndex,
-  historyLength,
   hasContent,
 }) => {
   return (
@@ -71,7 +64,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
             shape="circle"
             size="large"
             icon={<ClearOutlined style={{ fontSize: '18px' }} />}
-            onClick={onClear}
+            onClick={onClearAll}
             style={{
               width: '40px',
               height: '40px',
@@ -87,14 +80,14 @@ export const ActionBar: React.FC<ActionBarProps> = ({
                 key: 'pali',
                 label: 'Download Pali',
                 icon: <DownloadOutlined />,
-                onClick: onExportPali,
+                onClick: () => onExport('pali'),
                 disabled: !hasContent,
               },
               {
                 key: 'kannada',
                 label: 'Download Kannada',
                 icon: <DownloadOutlined />,
-                onClick: onExportKannada,
+                onClick: () => onExport('kannada'),
                 disabled: !hasContent,
               },
               {
@@ -104,7 +97,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
                 key: 'both',
                 label: 'Download Both',
                 icon: <DownloadOutlined />,
-                onClick: onExportBoth,
+                onClick: () => onExport('both'),
                 disabled: !hasContent,
               },
             ],
@@ -129,7 +122,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
         </Dropdown>
 
         {/* Undo */}
-        <Tooltip title={`Undo (${historyIndex} actions available)`}>
+        <Tooltip title={`Undo (${canUndo ? 'Ctrl+Z' : 'No actions to undo'})`}>
           <Button
             type="primary"
             shape="circle"
@@ -140,14 +133,14 @@ export const ActionBar: React.FC<ActionBarProps> = ({
             style={{
               width: '40px',
               height: '40px',
-              background: !canUndo ? '#2a2d34' : '#37a2f2',
-              borderColor: !canUndo ? '#2a2d34' : '#37a2f2',
+              background: canUndo ? '#37a2f2' : '#2a2d34',
+              borderColor: canUndo ? '#37a2f2' : '#2a2d34',
             }}
           />
         </Tooltip>
 
         {/* Redo */}
-        <Tooltip title={`Redo (${historyLength - historyIndex - 1} actions available)`}>
+        <Tooltip title={`Redo (${canRedo ? 'Ctrl+Shift+Z' : 'No actions to redo'})`}>
           <Button
             type="primary"
             shape="circle"
@@ -158,8 +151,8 @@ export const ActionBar: React.FC<ActionBarProps> = ({
             style={{
               width: '40px',
               height: '40px',
-              background: !canRedo ? '#2a2d34' : '#30c48d',
-              borderColor: !canRedo ? '#2a2d34' : '#30c48d',
+              background: canRedo ? '#30c48d' : '#2a2d34',
+              borderColor: canRedo ? '#30c48d' : '#2a2d34',
             }}
           />
         </Tooltip>

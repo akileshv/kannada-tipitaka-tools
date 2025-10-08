@@ -1,28 +1,22 @@
 import React from 'react';
-import { Row, Col, Space, Checkbox, Typography, Tag } from 'antd';
+import { Row, Col, Checkbox, Typography, Tag, Space } from 'antd';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface ColumnHeaderProps {
-  paliSelectedCount: number;
-  kannadaSelectedCount: number;
+  selectedPaliCount: number;
+  selectedKannadaCount: number;
+  totalRows: number;
   onSelectAllPali: () => void;
   onSelectAllKannada: () => void;
-  allPaliSelected: boolean;
-  allKannadaSelected: boolean;
-  somePaliSelected: boolean;
-  someKannadaSelected: boolean;
 }
 
 export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
-  paliSelectedCount,
-  kannadaSelectedCount,
+  selectedPaliCount,
+  selectedKannadaCount,
+  totalRows,
   onSelectAllPali,
   onSelectAllKannada,
-  allPaliSelected,
-  allKannadaSelected,
-  somePaliSelected,
-  someKannadaSelected,
 }) => {
   return (
     <Row 
@@ -37,33 +31,36 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
         zIndex: 10
       }}
     >
-      <Col xs={24} md={12}>
+      <Col xs={24} md={11}>
         <Space>
           <Checkbox
-            checked={allPaliSelected}
-            indeterminate={somePaliSelected}
+            checked={selectedPaliCount === totalRows && totalRows > 0}
+            indeterminate={selectedPaliCount > 0 && selectedPaliCount < totalRows}
             onChange={onSelectAllPali}
           />
           <Title level={5} style={{ margin: 0, color: '#1890ff' }}>
             Pali Text
           </Title>
-          {paliSelectedCount > 0 && (
-            <Tag color="blue">{paliSelectedCount} selected</Tag>
+          {selectedPaliCount > 0 && (
+            <Tag color="blue">{selectedPaliCount} selected</Tag>
           )}
         </Space>
       </Col>
-      <Col xs={24} md={12}>
+      <Col xs={24} md={2} style={{ textAlign: 'center' }}>
+        <Text type="secondary">Actions</Text>
+      </Col>
+      <Col xs={24} md={11}>
         <Space>
           <Checkbox
-            checked={allKannadaSelected}
-            indeterminate={someKannadaSelected}
+            checked={selectedKannadaCount === totalRows && totalRows > 0}
+            indeterminate={selectedKannadaCount > 0 && selectedKannadaCount < totalRows}
             onChange={onSelectAllKannada}
           />
           <Title level={5} style={{ margin: 0, color: '#52c41a' }}>
             Kannada Text
           </Title>
-          {kannadaSelectedCount > 0 && (
-            <Tag color="green">{kannadaSelectedCount} selected</Tag>
+          {selectedKannadaCount > 0 && (
+            <Tag color="green">{selectedKannadaCount} selected</Tag>
           )}
         </Space>
       </Col>

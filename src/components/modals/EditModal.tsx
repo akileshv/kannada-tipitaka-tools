@@ -1,77 +1,617 @@
-import React from 'react';
-import { Modal, Input, Space, Typography } from 'antd';
-import { EditOutlined, SaveOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Modal, Input, Space, Button, Typography, Divider, Tag, Alert } from 'antd';
+import {
+  EditOutlined,
+  SaveOutlined,
+  LeftOutlined,
+  RightOutlined,
+  FullscreenOutlined,
+  FullscreenExitOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
+import type { ContentRow } from '../../types';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 interface EditModalProps {
   visible: boolean;
-  column: 'pali' | 'kannada';
-  text: string;
-  onTextChange: (text: string) => void;
-  onSave: () => void;
-  onCancel: () => void;
+  editingRow: ContentRow | null;
+  allRows: ContentRow[];
+  onClose: () => void;
+  onSavePali: (rowId: string, newText: string, otherColumnText: string, otherColumnRowId: string) => void;
+  onSaveKannada: (rowId: string, newText: string, otherColumnText: string, otherColumnRowId: string) => void;
+  onNavigate: (rowId: string) => void;
 }
 
 export const EditModal: React.FC<EditModalProps> = ({
   visible,
-  column,
-  text,
-  onTextChange,
-  onSave,
-  onCancel,
+  editingRow,
+  allRows,
+  onClose,
+  onSavePali,
+  onSaveKannada,
 }) => {
+  const [currentPaliIndex, setCurrentPaliIndex] = useState<number>(0);
+  const [currentKannadaIndex, setCurrentKannadaIndex] = useState<number>(0);
+  
+  const [paliText, setPaliText] = useState('');
+  const [kannadaText, setKannadaText] = useState('');
+  const [paliSaved, setPaliSaved] = useState(false);
+  const [kannadaSaved, setKannadaSaved] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Track original values to detect changes
+  const [originalPaliText, setOriginalPaliText] = useState('');
+  const [originalKannadaText, setOriginalKannadaText] = useState('');
+
+  // Initialize indices when modal opens or editingRow changes
+  useEffect(() => {
+    if (editingRow && allRows.length > 0) {
+      const initialIndex = allRows.findIndex(row => row.id === editingRow.id);
+      if (initialIndex !== -1) {
+        setCurrentPaliIndex(initialIndex);
+        setCurrentKannadaIndex(initialIndex);
+        setPaliText(allRows[initialIndex].paliText);
+        setKannadaText(allRows[initialIndex].kannadaText);
+        setOriginalPaliText(allRows[initialIndex].paliText);
+        setOriginalKannadaText(allRows[initialIndex].kannadaText);
+        setPaliSaved(false);
+        setKannadaSaved(false);
+      }
+    }
+  }, [editingRow, allRows]);
+
+  // Update texts when indices change
+  useEffect(() => {
+    if (allRows[currentPaliIndex]) {
+      setPaliText(allRows[currentPaliIndex].paliText);
+      setOriginalPaliText(allRows[currentPaliIndex].paliText);
+      setPaliSaved(false);
+    }
+  }, [currentPaliIndex, allRows]);
+
+  useEffect(() => {
+    if (allRows[currentKannadaIndex]) {
+      setKannadaText(allRows[currentKannadaIndex].kannadaText);
+      setOriginalKannadaText(allRows[currentKannadaIndex].kannadaText);
+      setKannadaSaved(false);
+    }
+  }, [currentKannadaIndex, allRows]);
+
+  // Check if both columns have been edited
+  const paliWasEdited = paliText !== originalPaliText;
+  const kannadaWasEdited = kannadaText !== originalKannadaText;
+  const bothEdited = paliWasEdited && kannadaWasEdited;
+  
+  // Check if either will split into multiple lines
+  const paliWillSplit = paliText.split('\n').length > 1;
+  const kannadaWillSplit = kannadaText.split('\n').length > 1;
+  
+  // Show warning if both edited AND at least one will split
+  const showWarning = bothEdited && (paliWillSplit || kannadaWillSplit);
+
+  const handleSavePali = useCallback(() => {
+    const currentPaliRow = allRows[currentPaliIndex];
+    const currentKannadaRow = allRows[currentKannadaIndex];
+    
+    if (!currentPaliRow || !currentKannadaRow) return;
+  
+    // Pass all 4 parameters including the Kannada row's ID
+    onSavePali(
+      currentPaliRow.id,      // Which row to save Pali to
+      paliText,                // The Pali text
+      kannadaText,             // The Kannada text (for checking if edited)
+      currentKannadaRow.id     // Which row the Kannada is from
+    );
+    
+    setPaliSaved(true);
+    if (kannadaWasEdited && paliWillSplit) {
+      setKannadaSaved(true);
+      setTimeout(() => {
+        setPaliSaved(false);
+        setKannadaSaved(false);
+      }, 2000);
+    } else {
+      setTimeout(() => setPaliSaved(false), 2000);
+    }
+    
+    // Update originals after save
+    setOriginalPaliText(paliText);
+    if (kannadaWasEdited && paliWillSplit) {
+      setOriginalKannadaText(kannadaText);
+    }
+  }, [
+    allRows, 
+    currentPaliIndex, 
+    currentKannadaIndex, 
+    paliText, 
+    kannadaText, 
+    kannadaWasEdited, 
+    paliWillSplit, 
+    onSavePali
+  ]);
+
+  const handleSaveKannada = useCallback(() => {
+    const currentKannadaRow = allRows[currentKannadaIndex];
+    const currentPaliRow = allRows[currentPaliIndex];
+    
+    if (!currentKannadaRow || !currentPaliRow) return;
+  
+    // Pass all 4 parameters including the Pali row's ID
+    onSaveKannada(
+      currentKannadaRow.id,    // Which row to save Kannada to
+      kannadaText,             // The Kannada text
+      paliText,                // The Pali text (for checking if edited)
+      currentPaliRow.id        // Which row the Pali is from
+    );
+    
+    setKannadaSaved(true);
+    if (paliWasEdited && kannadaWillSplit) {
+      setPaliSaved(true);
+      setTimeout(() => {
+        setKannadaSaved(false);
+        setPaliSaved(false);
+      }, 2000);
+    } else {
+      setTimeout(() => setKannadaSaved(false), 2000);
+    }
+    
+    // Update originals after save
+    setOriginalKannadaText(kannadaText);
+    if (paliWasEdited && kannadaWillSplit) {
+      setOriginalPaliText(paliText);
+    }
+  }, [
+    allRows, 
+    currentKannadaIndex, 
+    currentPaliIndex, 
+    kannadaText, 
+    paliText, 
+    paliWasEdited, 
+    kannadaWillSplit, 
+    onSaveKannada
+  ]);
+
+  // Find functions - memoized
+  const findPreviousPaliIndex = useCallback(() => {
+    for (let i = currentPaliIndex - 1; i >= 0; i--) {
+      if (allRows[i]?.paliText?.trim()) {
+        return i;
+      }
+    }
+    return null;
+  }, [currentPaliIndex, allRows]);
+
+  const findNextPaliIndex = useCallback(() => {
+    for (let i = currentPaliIndex + 1; i < allRows.length; i++) {
+      if (allRows[i]?.paliText?.trim()) {
+        return i;
+      }
+    }
+    return null;
+  }, [currentPaliIndex, allRows]);
+
+  const findPreviousKannadaIndex = useCallback(() => {
+    for (let i = currentKannadaIndex - 1; i >= 0; i--) {
+      if (allRows[i]?.kannadaText?.trim()) {
+        return i;
+      }
+    }
+    return null;
+  }, [currentKannadaIndex, allRows]);
+
+  const findNextKannadaIndex = useCallback(() => {
+    for (let i = currentKannadaIndex + 1; i < allRows.length; i++) {
+      if (allRows[i]?.kannadaText?.trim()) {
+        return i;
+      }
+    }
+    return null;
+  }, [currentKannadaIndex, allRows]);
+
+  const handleNavigatePali = useCallback((direction: 'prev' | 'next') => {
+    const targetIndex = direction === 'prev' 
+      ? findPreviousPaliIndex() 
+      : findNextPaliIndex();
+    if (targetIndex !== null) {
+      setCurrentPaliIndex(targetIndex);
+    }
+  }, [findPreviousPaliIndex, findNextPaliIndex]);
+
+  const handleNavigateKannada = useCallback((direction: 'prev' | 'next') => {
+    const targetIndex = direction === 'prev' 
+      ? findPreviousKannadaIndex() 
+      : findNextKannadaIndex();
+    if (targetIndex !== null) {
+      setCurrentKannadaIndex(targetIndex);
+    }
+  }, [findPreviousKannadaIndex, findNextKannadaIndex]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!visible) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleNavigatePali('prev');
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleNavigatePali('next');
+      }
+      if (e.altKey && e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleNavigateKannada('prev');
+      }
+      if (e.altKey && e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleNavigateKannada('next');
+      }
+      if (e.key === 'F11') {
+        e.preventDefault();
+        setIsFullscreen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [visible, handleNavigatePali, handleNavigateKannada]);
+
+  if (!editingRow || allRows.length === 0) return null;
+
+  const currentPaliRow = allRows[currentPaliIndex];
+  const currentKannadaRow = allRows[currentKannadaIndex];
+
+  const previousPaliIndex = findPreviousPaliIndex();
+  const nextPaliIndex = findNextPaliIndex();
+  const previousKannadaIndex = findPreviousKannadaIndex();
+  const nextKannadaIndex = findNextKannadaIndex();
+
+  const modalWidth = isFullscreen ? '98vw' : '90vw';
+  const maxModalWidth = isFullscreen ? 'none' : '1400px';
+
   return (
     <Modal
       title={
-        <Space>
-          <EditOutlined style={{ color: column === 'pali' ? '#1890ff' : '#52c41a' }} />
-          <span>Edit {column === 'pali' ? 'Pali' : 'Kannada'} Text</span>
-        </Space>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '40px' }}>
+          <Space>
+            <EditOutlined style={{ color: '#00b3a4' }} />
+            <span>Edit Content (Total: {allRows.length} rows)</span>
+          </Space>
+          <Button
+            type="text"
+            icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            style={{ color: '#00b3a4' }}
+          >
+            {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          </Button>
+        </div>
       }
       open={visible}
-      onOk={onSave}
-      onCancel={onCancel}
-      width={800}
-      okText="Save Changes"
-      cancelText="Cancel"
-      okButtonProps={{ icon: <SaveOutlined /> }}
+      onCancel={onClose}
+      width={modalWidth}
+      style={{ 
+        maxWidth: maxModalWidth,
+        top: isFullscreen ? 10 : 20,
+      }}
+      styles={{
+        body: {
+          maxHeight: isFullscreen ? 'calc(100vh - 200px)' : 'calc(90vh - 200px)',
+          overflowY: 'auto',
+        }
+      }}
+      footer={null}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <div>
-          <div style={{ marginBottom: '8px' }}>
-            <Title level={5} style={{ 
-              marginBottom: '4px', 
-              color: column === 'pali' ? '#1890ff' : '#52c41a' 
-            }}>
-              {column === 'pali' ? 'Pali' : 'Kannada'} Text
-            </Title>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Use line breaks to split into multiple rows
-            </Text>
-          </div>
-          <TextArea
-            value={text}
-            onChange={(e) => onTextChange(e.target.value)}
-            rows={6}
-            placeholder={`Enter ${column} text (use newlines to split into multiple rows)`}
-            style={{ 
-              fontSize: '14px',
-              fontFamily: 'monospace',
-              borderColor: column === 'pali' ? '#1890ff' : '#52c41a'
+        {/* Warning Banner */}
+        {showWarning && (
+          <Alert
+            message={
+              currentPaliIndex === currentKannadaIndex
+                ? "Both Columns Edited (Same Row #" + (currentPaliIndex + 1) + ")"
+                : "Both Columns Edited (Different Rows)"
+            }
+            description={
+              currentPaliIndex === currentKannadaIndex ? (
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Text>
+                    You&apos;ve edited both Pali and Kannada on the same row, and at least one will split into multiple lines.
+                  </Text>
+                  <Text strong style={{ color: '#faad14' }}>
+                    🔄 When you click save, the other column&apos;s text will attach to the first non-empty split line.
+                  </Text>
+                  <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                  <li>
+                    <Text type="secondary">
+                      Example: Pali &quot;A\nB\nC&quot; → Kannada will attach to line &quot;A&quot;
+                    </Text>
+                  </li>
+                  </ul>
+                </Space>
+              ) : (
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Text>
+                    You&apos;ve edited Pali and Kannada on <strong>different rows</strong>:
+                  </Text>
+                  <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                    <li>Pali: <strong>Row #{currentPaliIndex + 1}</strong></li>
+                    <li>Kannada: <strong>Row #{currentKannadaIndex + 1}</strong></li>
+                  </ul>
+                  <Text strong style={{ color: '#faad14' }}>
+                    🔄 Clicking save will update BOTH rows independently at their respective positions.
+                  </Text>
+                </Space>
+              )
+            }
+            type="warning"
+            icon={<WarningOutlined />}
+            showIcon
+            closable
+            style={{
+              border: '2px solid #faad14',
+              backgroundColor: 'rgba(250, 173, 20, 0.1)',
             }}
           />
+        )}
+
+        {/* Pali Text Editor */}
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '8px' 
+          }}>
+            <Space>
+              <Title level={5} style={{ marginBottom: 0, color: '#1890ff' }}>
+                Pali Text
+              </Title>
+              <Tag color="blue">Row #{currentPaliIndex + 1}</Tag>
+              {paliWasEdited && <Tag color="orange">Edited</Tag>}
+            </Space>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSavePali}
+              style={{ 
+                backgroundColor: paliSaved ? '#52c41a' : '#1890ff',
+                borderColor: paliSaved ? '#52c41a' : '#1890ff',
+              }}
+            >
+              {paliSaved ? 'Saved!' : (
+                kannadaWasEdited && paliWillSplit
+                  ? '💾 Save Both'
+                  : 'Save Pali'
+              )}
+            </Button>
+          </div>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            Use line breaks to split into multiple rows
+          </Text>
+          <TextArea
+            value={paliText}
+            onChange={(e) => {
+              setPaliText(e.target.value);
+              setPaliSaved(false);
+            }}
+            rows={isFullscreen ? 6 : 4}
+            placeholder="Enter Pali text (use newlines to split into multiple rows)"
+            style={{ 
+              marginTop: '8px',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              borderColor: paliWasEdited ? '#faad14' : '#1890ff',
+              borderWidth: '2px',
+            }}
+          />
+          
+          {/* Pali Navigation */}
+          <div style={{ 
+            marginTop: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px',
+            background: '#1f1f1f',
+            borderRadius: '4px',
+            borderLeft: '3px solid #1890ff'
+          }}>
+            <Space>
+              <Button
+                icon={<LeftOutlined />}
+                onClick={() => handleNavigatePali('prev')}
+                disabled={previousPaliIndex === null}
+                size="small"
+                style={{ 
+                  borderColor: '#1890ff', 
+                  color: previousPaliIndex !== null ? '#1890ff' : '#666' 
+                }}
+              >
+                Previous Pali
+              </Button>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Ctrl+Shift+↑/↓
+              </Text>
+              <Button
+                icon={<RightOutlined />}
+                onClick={() => handleNavigatePali('next')}
+                disabled={nextPaliIndex === null}
+                size="small"
+                style={{ 
+                  borderColor: '#1890ff', 
+                  color: nextPaliIndex !== null ? '#1890ff' : '#666' 
+                }}
+              >
+                Next Pali
+              </Button>
+            </Space>
+            {currentPaliRow?.paliTags && currentPaliRow.paliTags.length > 0 && (
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                Tags: {currentPaliRow.paliTags.join(', ')}
+              </Text>
+            )}
+          </div>
+          {(currentPaliRow?.paliType || currentPaliRow?.paliTypename) && (
+            <div style={{ 
+              marginTop: '4px',
+              padding: '4px 8px',
+              background: '#1a1a2e',
+              borderRadius: '4px',
+            }}>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                {currentPaliRow.paliType && `Type: ${currentPaliRow.paliType}`}
+                {currentPaliRow.paliType && currentPaliRow.paliTypename && ' | '}
+                {currentPaliRow.paliTypename && `Typename: ${currentPaliRow.paliTypename}`}
+              </Text>
+            </div>
+          )}
         </div>
+
+        <Divider style={{ margin: '12px 0' }} />
+
+        {/* Kannada Text Editor */}
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '8px' 
+          }}>
+            <Space>
+              <Title level={5} style={{ marginBottom: 0, color: '#52c41a' }}>
+                Kannada Text
+              </Title>
+              <Tag color="green">Row #{currentKannadaIndex + 1}</Tag>
+              {kannadaWasEdited && <Tag color="orange">Edited</Tag>}
+            </Space>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSaveKannada}
+              style={{ 
+                backgroundColor: kannadaSaved ? '#1890ff' : '#52c41a',
+                borderColor: kannadaSaved ? '#1890ff' : '#52c41a',
+              }}
+            >
+              {kannadaSaved ? 'Saved!' : (
+                paliWasEdited && kannadaWillSplit
+                  ? '💾 Save Both'
+                  : 'Save Kannada'
+              )}
+            </Button>
+          </div>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            Use line breaks to split into multiple rows
+          </Text>
+          <TextArea
+            value={kannadaText}
+            onChange={(e) => {
+              setKannadaText(e.target.value);
+              setKannadaSaved(false);
+            }}
+            rows={isFullscreen ? 6 : 4}
+            placeholder="Enter Kannada text (use newlines to split into multiple rows)"
+            style={{ 
+              marginTop: '8px',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              borderColor: kannadaWasEdited ? '#faad14' : '#52c41a',
+              borderWidth: '2px',
+            }}
+          />
+          
+          {/* Kannada Navigation */}
+          <div style={{ 
+            marginTop: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px',
+            background: '#1f1f1f',
+            borderRadius: '4px',
+            borderLeft: '3px solid #52c41a'
+          }}>
+            <Space>
+              <Button
+                icon={<LeftOutlined />}
+                onClick={() => handleNavigateKannada('prev')}
+                disabled={previousKannadaIndex === null}
+                size="small"
+                style={{ 
+                  borderColor: '#52c41a', 
+                  color: previousKannadaIndex !== null ? '#52c41a' : '#666' 
+                }}
+              >
+                Previous Kannada
+              </Button>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Alt+↑/↓
+              </Text>
+              <Button
+                icon={<RightOutlined />}
+                onClick={() => handleNavigateKannada('next')}
+                disabled={nextKannadaIndex === null}
+                size="small"
+                style={{ 
+                  borderColor: '#52c41a', 
+                  color: nextKannadaIndex !== null ? '#52c41a' : '#666' 
+                }}
+              >
+                Next Kannada
+              </Button>
+            </Space>
+            {currentKannadaRow?.kannadaTags && currentKannadaRow.kannadaTags.length > 0 && (
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                Tags: {currentKannadaRow.kannadaTags.join(', ')}
+              </Text>
+            )}
+          </div>
+          {(currentKannadaRow?.kannadaType || currentKannadaRow?.kannadaTypename) && (
+            <div style={{ 
+              marginTop: '4px',
+              padding: '4px 8px',
+              background: '#1a2e1a',
+              borderRadius: '4px',
+            }}>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                {currentKannadaRow.kannadaType && `Type: ${currentKannadaRow.kannadaType}`}
+                {currentKannadaRow.kannadaType && currentKannadaRow.kannadaTypename && ' | '}
+                {currentKannadaRow.kannadaTypename && `Typename: ${currentKannadaRow.kannadaTypename}`}
+              </Text>
+            </div>
+          )}
+        </div>
+
+        {/* Help Text */}
         <div style={{ 
           padding: '12px', 
           background: '#1f1f1f', 
           borderRadius: '6px',
-          borderLeft: `3px solid ${column === 'pali' ? '#1890ff' : '#52c41a'}`
+          borderLeft: '3px solid #faad14'
         }}>
-          <Text type="secondary">
-            <strong>Tip:</strong> Leave empty to delete this {column} entry. Each line will become a separate entry.
-          </Text>
+          <Space direction="vertical" size="small">
+            <Text type="secondary">
+              <strong>💡 Tips & Keyboard Shortcuts:</strong>
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              • <strong>Pali Navigation:</strong> Ctrl+Shift+↑/↓ to move between Pali entries independently
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              • <strong>Kannada Navigation:</strong> Alt+↑/↓ to move between Kannada entries independently
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              • <strong>Fullscreen:</strong> Press F11 or click the button to toggle fullscreen mode
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              • Pali and Kannada can be on different row numbers
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              • Each line will become a separate entry when saved
+            </Text>
+          </Space>
         </div>
       </Space>
     </Modal>

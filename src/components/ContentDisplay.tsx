@@ -1,64 +1,43 @@
 import React from 'react';
 import { Card, Empty } from 'antd';
-import type { ContentRow as ContentRowType } from '../types';
-import { ContentRow } from './ContentRow';
+import type { ContentRow } from '../types';
 import { ColumnHeader } from './ColumnHeader';
 import { ActionBar } from './ActionBar';
+import { ContentRow as ContentRowComponent } from './ContentRow';
 
 interface ContentDisplayProps {
-  contentRows: ContentRowType[];
+  contentRows: ContentRow[];
   selectedPaliIds: Set<string>;
   selectedKannadaIds: Set<string>;
-  onPaliCheckboxChange: (id: string) => void;
-  onKannadaCheckboxChange: (id: string) => void;
-  onSelectAllPali: () => void;
-  onSelectAllKannada: () => void;
-  onEditPali: (row: ContentRowType) => void;
-  onEditKannada: (row: ContentRowType) => void;
-  onOpenPaliTagModal: (row: ContentRowType) => void;
-  onOpenKannadaTagModal: (row: ContentRowType) => void;
+  onSelectAll: (column: 'pali' | 'kannada') => void;
+  onCheckboxChange: (id: string, column: 'pali' | 'kannada') => void;
+  onEdit: (row: ContentRow) => void;
   onSave: () => void;
-  onClear: () => void;
-  onExportPali: () => void;
-  onExportKannada: () => void;
-  onExportBoth: () => void;
+  onExport: (type: 'both' | 'pali' | 'kannada') => void;
   onUndo: () => void;
   onRedo: () => void;
+  onClearAll: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  historyIndex: number;
-  historyLength: number;
+  historyCount: number;
 }
 
 export const ContentDisplay: React.FC<ContentDisplayProps> = ({
   contentRows,
   selectedPaliIds,
   selectedKannadaIds,
-  onPaliCheckboxChange,
-  onKannadaCheckboxChange,
-  onSelectAllPali,
-  onSelectAllKannada,
-  onEditPali,
-  onEditKannada,
-  onOpenPaliTagModal,
-  onOpenKannadaTagModal,
+  onSelectAll,
+  onCheckboxChange,
+  onEdit,
   onSave,
-  onClear,
-  onExportPali,
-  onExportKannada,
-  onExportBoth,
+  onExport,
   onUndo,
   onRedo,
+  onClearAll,
   canUndo,
   canRedo,
-  historyIndex,
-  historyLength,
+  historyCount,
 }) => {
-  const allPaliSelected = selectedPaliIds.size === contentRows.length && contentRows.length > 0;
-  const allKannadaSelected = selectedKannadaIds.size === contentRows.length && contentRows.length > 0;
-  const somePaliSelected = selectedPaliIds.size > 0 && selectedPaliIds.size < contentRows.length;
-  const someKannadaSelected = selectedKannadaIds.size > 0 && selectedKannadaIds.size < contentRows.length;
-
   return (
     <Card 
       style={{ 
@@ -67,30 +46,24 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
       }}
       styles={{ body: { padding: '16px' } }}
     >
-      <ActionBar
-        onSave={onSave}
-        onClear={onClear}
-        onExportPali={onExportPali}
-        onExportKannada={onExportKannada}
-        onExportBoth={onExportBoth}
-        onUndo={onUndo}
-        onRedo={onRedo}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        historyIndex={historyIndex}
-        historyLength={historyLength}
-        hasContent={contentRows.length > 0}
+      <ColumnHeader
+        selectedPaliCount={selectedPaliIds.size}
+        selectedKannadaCount={selectedKannadaIds.size}
+        totalRows={contentRows.length}
+        onSelectAllPali={() => onSelectAll('pali')}
+        onSelectAllKannada={() => onSelectAll('kannada')}
       />
 
-      <ColumnHeader
-        paliSelectedCount={selectedPaliIds.size}
-        kannadaSelectedCount={selectedKannadaIds.size}
-        onSelectAllPali={onSelectAllPali}
-        onSelectAllKannada={onSelectAllKannada}
-        allPaliSelected={allPaliSelected}
-        allKannadaSelected={allKannadaSelected}
-        somePaliSelected={somePaliSelected}
-        someKannadaSelected={someKannadaSelected}
+      <ActionBar
+        onSave={onSave}
+        onExport={onExport}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        onClearAll={onClearAll}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        historyCount={historyCount}
+        hasContent={contentRows.length > 0}
       />
 
       {contentRows.length === 0 ? (
@@ -106,17 +79,15 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
       ) : (
         <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
           {contentRows.map((row, index) => (
-            <ContentRow
+            <ContentRowComponent
               key={row.id}
               row={row}
+              index={index}
               isPaliSelected={selectedPaliIds.has(row.id)}
               isKannadaSelected={selectedKannadaIds.has(row.id)}
-              onPaliCheckboxChange={() => onPaliCheckboxChange(row.id)}
-              onKannadaCheckboxChange={() => onKannadaCheckboxChange(row.id)}
-              onEditPali={() => onEditPali(row)}
-              onEditKannada={() => onEditKannada(row)}
-              onOpenPaliTagModal={() => onOpenPaliTagModal(row)}      // ✅ ADD THIS
-              onOpenKannadaTagModal={() => onOpenKannadaTagModal(row)} // ✅ ADD THIS
+              onPaliCheck={() => onCheckboxChange(row.id, 'pali')}
+              onKannadaCheck={() => onCheckboxChange(row.id, 'kannada')}
+              onEdit={() => onEdit(row)}
             />
           ))}
         </div>
