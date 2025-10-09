@@ -15,6 +15,7 @@ export const TYPE_STYLES: Record<string, React.CSSProperties> = {
   subtitle: { fontSize: '16px', fontWeight: '500', margin: 0, lineHeight: 1.4 },
   paragraph: { fontSize: '14px', margin: 0, lineHeight: 1.6 },
   stanza: { fontSize: '14px', fontStyle: 'italic', margin: 0, lineHeight: 1.6 },
+  '(empty)': { fontSize: '14px', fontStyle: 'italic', margin: 0, lineHeight: 1.6 },
   blockquote: { 
     fontSize: '14px', 
     fontStyle: 'italic', 

@@ -186,6 +186,7 @@ export const TagModal: React.FC<TagModalProps> = ({
             <Select.Option value="subtitle">Subtitle</Select.Option>
             <Select.Option value="paragraph">Paragraph</Select.Option>
             <Select.Option value="stanza">Stanza (Verse)</Select.Option>
+            <Select.Option value="(empty)">(Empty)</Select.Option>
             <Select.Option value="commentary">Commentary</Select.Option>
             <Select.Option value="footnote">Footnote</Select.Option>
           </Select>
