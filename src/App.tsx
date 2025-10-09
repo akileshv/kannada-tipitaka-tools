@@ -482,14 +482,50 @@ const AppContent: React.FC = () => {
     });
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, modalApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
+  const isRowEmpty = ({ 
+    kannadaTags = [], kannadaText = "", kannadaType = "", kannadaTypename = "", paliTags = [], paliText = "", paliType = "", paliTypename = "",
+  }: ContentRow) => {
+
+    if (kannadaTags.length === 0 && kannadaText === "" && kannadaType === "" && kannadaTypename === "" &&
+      paliTags.length === 0 && paliText === "" && paliType === "" && paliTypename === "") {
+        console.log("------", true, "----------")
+      } else {
+        console.log("------", false, "----------", kannadaTags.length, kannadaText, kannadaTypename, kannadaType, paliTags, paliText, paliType, paliTypename);
+      }
+    return (
+      kannadaTags.length === 0 && kannadaText === "" && kannadaType === "" && kannadaTypename === "" &&
+      paliTags.length === 0 && paliText === "" && paliType === "" && paliTypename === ""
+    );
+  };
+  
+  
+  const  removeTrailingEmptyRowsLoop = useCallback((contentRows: ContentRow[]) =>{
+    let lastNonEmptyIndex = -1;
+  
+    // Loop backwards from the end of the array
+    for (let i = contentRows.length - 1; i >= 0; i--) {
+      console.log("hello ", i)
+      // If we find a row that is NOT empty...
+      if (!isRowEmpty(contentRows[i])) {
+        // ...we record its index and stop looking.
+        lastNonEmptyIndex = i;
+        break;
+      }
+    }
+  
+    // If we found a non-empty row, slice up to it.
+    // Otherwise, return an empty array (since -1 + 1 = 0).
+    return contentRows.slice(0, lastNonEmptyIndex + 1);
+  }, [])
+  
   // Export handler
   const handleExport = useCallback((exportType: 'both' | 'pali' | 'kannada') => {
     if (contentRows.length === 0) {
       messageApi.warning('No content to export');
       return;
     }
-
-    const { data, count } = exportData(contentRows, exportType);
+    console.log({contentRows})
+    const { data, count } = exportData(removeTrailingEmptyRowsLoop(contentRows), exportType);
 
     if (count === 0) {
       messageApi.warning(`No ${exportType} content to export`);
@@ -498,7 +534,7 @@ const AppContent: React.FC = () => {
 
     downloadJSON(data, `bilingual-alignment-${exportType}`);
     messageApi.success(`${count} row(s) exported successfully!`);
-  }, [contentRows, messageApi]);
+  }, [contentRows, messageApi, removeTrailingEmptyRowsLoop]);
 
   // Clear all handler
   const handleClearAll = useCallback(() => {
