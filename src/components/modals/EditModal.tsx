@@ -625,19 +625,34 @@ export const EditModal: React.FC<EditModalProps> = ({
               <strong>💡 Tips & Keyboard Shortcuts:</strong>
             </Text>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              • <strong>Pali Navigation:</strong> Ctrl+Shift+↑/↓ to move between Pali entries independently
+              • <strong>Pali Navigation:</strong> Ctrl+Shift+↑/↓ to move between Pali entries
             </Text>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              • <strong>Kannada Navigation:</strong> Alt+↑/↓ to move between Kannada entries independently
+              • <strong>Kannada Navigation:</strong> Alt+↑/↓ to move between Kannada entries
             </Text>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              • <strong>Fullscreen:</strong> Press F11 or click the button to toggle fullscreen mode
+              • <strong>Both Navigation:</strong> Alt+Ctrl+↑/↓ to move both together
             </Text>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              • Pali and Kannada can be on different row numbers
+              • <strong>Fullscreen:</strong> Press F11 to toggle fullscreen mode
             </Text>
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              • Each line will become a separate entry when saved
+              • <strong>Main View Shortcuts:</strong>
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px', paddingLeft: '16px' }}>
+              ◦ Click checkbox: Select single column
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px', paddingLeft: '16px' }}>
+              ◦ Shift+Click checkbox: Select both columns
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px', paddingLeft: '16px' }}>
+              ◦ Double-click text: Open edit modal
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px', paddingLeft: '16px' }}>
+              ◦ Alt+Click checkbox: Open edit modal
+            </Text>
+            <Text type="secondary" style={{ fontSize: '12px', paddingLeft: '16px' }}>
+              ◦ Click tag/type: Quick edit metadata
             </Text>
           </Space>
         </div>

@@ -7,7 +7,7 @@ interface UseSelectionReturn {
   setSelectedPaliIds: (ids: Set<string>) => void;
   setSelectedKannadaIds: (ids: Set<string>) => void;
   handleSelectAll: (column: 'pali' | 'kannada', contentRows: ContentRow[]) => void;
-  handleCheckboxChange: (id: string, column: 'pali' | 'kannada') => void;
+  handleCheckboxChange: (id: string, column: 'pali' | 'kannada', selectBoth?: boolean) => void;
   clearSelection: (column: 'pali' | 'kannada' | 'both') => void;
 }
 
@@ -24,7 +24,38 @@ export const useSelection = (): UseSelectionReturn => {
     }
   }, [selectedPaliIds, selectedKannadaIds]);
 
-  const handleCheckboxChange = useCallback((id: string, column: 'pali' | 'kannada') => {
+  const handleCheckboxChange = useCallback((
+    id: string, 
+    column: 'pali' | 'kannada',
+    selectBoth: boolean = false
+  ) => {
+    // ✅ Shift+Click: Select BOTH columns
+    if (selectBoth) {
+      const bothSelected = selectedPaliIds.has(id) && selectedKannadaIds.has(id);
+      
+      setSelectedPaliIds(prev => {
+        const newSelected = new Set(prev);
+        if (bothSelected) {
+          newSelected.delete(id);
+        } else {
+          newSelected.add(id);
+        }
+        return newSelected;
+      });
+      
+      setSelectedKannadaIds(prev => {
+        const newSelected = new Set(prev);
+        if (bothSelected) {
+          newSelected.delete(id);
+        } else {
+          newSelected.add(id);
+        }
+        return newSelected;
+      });
+      return;
+    }
+
+    // ✅ Normal click: Toggle single column
     if (column === 'pali') {
       setSelectedPaliIds(prev => {
         const newSelected = new Set(prev);
@@ -46,7 +77,7 @@ export const useSelection = (): UseSelectionReturn => {
         return newSelected;
       });
     }
-  }, []);
+  }, [selectedPaliIds, selectedKannadaIds]);
 
   const clearSelection = useCallback((column: 'pali' | 'kannada' | 'both') => {
     if (column === 'pali') {

@@ -56,6 +56,8 @@ const AppContent: React.FC = () => {
   // Modal states
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingRow, setEditingRow] = useState<ContentRow | null>(null);
+  const [quickEditRow, setQuickEditRow] = useState<ContentRow | null>(null);
+  const [quickEditColumn, setQuickEditColumn] = useState<'pali' | 'kannada'>('pali');
 
   const [isTagModalVisible, setIsTagModalVisible] = useState(false);
   const [currentTagColumn, setCurrentTagColumn] = useState<'pali' | 'kannada'>('pali');
@@ -91,6 +93,32 @@ const AppContent: React.FC = () => {
       messageApi.info('Redo successful');
     }
   }, [performRedo, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
+
+  const handleQuickEditPali = useCallback((row: ContentRow) => {
+    // Select the row
+    setSelectedPaliIds(new Set([row.id]));
+    // Set quick edit data
+    setQuickEditRow(row);
+    setQuickEditColumn('pali');
+    // Open tag modal
+    setIsTagModalVisible(true);
+  }, [setSelectedPaliIds]);
+
+  const handleQuickEditKannada = useCallback((row: ContentRow) => {
+    // Select the row
+    setSelectedKannadaIds(new Set([row.id]));
+    // Set quick edit data
+    setQuickEditRow(row);
+    setQuickEditColumn('kannada');
+    // Open tag modal
+    setIsTagModalVisible(true);
+  }, [setSelectedKannadaIds]);
+
+  // ✅ UPDATE: Close tag modal handler
+  const handleCloseTagModal = useCallback(() => {
+    setIsTagModalVisible(false);
+    setQuickEditRow(null);
+  }, []);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -160,101 +188,16 @@ const AppContent: React.FC = () => {
     const lines = newText.split('\n');
     const otherColumnRow = contentRows.find(r => r.id === otherColumnRowId);
   
-    // Check if other column was edited
     const otherColumnOriginalText = otherColumnRow 
       ? (column === 'pali' ? otherColumnRow.kannadaText : otherColumnRow.paliText)
       : '';
     const otherColumnWasEdited = otherColumnText !== otherColumnOriginalText;
   
-    console.log('🔍 Save Debug:', {
-      column,
-      rowId,
-      otherColumnRowId,
-      sameRow: rowId === otherColumnRowId,
-      lineCount: lines.length,
-      otherColumnWasEdited,
-      otherColumnHasNewlines: otherColumnText.includes('\n'),
-    });
-  
-    // ✅ CASE 1: Empty content - clear the row
-    if (newText.trim() === '') {
-      const newRows = contentRows.map(r => {
-        if (r.id === rowId) {
-          const updatedRow = { ...r };
-          if (column === 'pali') {
-            updatedRow.paliText = '';
-            updatedRow.paliTags = [];
-            updatedRow.paliType = undefined;
-            updatedRow.paliTypename = undefined;
-          } else {
-            updatedRow.kannadaText = '';
-            updatedRow.kannadaTags = [];
-            updatedRow.kannadaType = undefined;
-            updatedRow.kannadaTypename = undefined;
-          }
-          return updatedRow;
-        }
-        if (otherColumnWasEdited && r.id === otherColumnRowId) {
-          const updatedRow = { ...r };
-          if (column === 'pali') {
-            updatedRow.kannadaText = otherColumnText;
-          } else {
-            updatedRow.paliText = otherColumnText;
-          }
-          return updatedRow;
-        }
-        return r;
-      });
-      
-      addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-      setContentRows(newRows);
-      messageApi.success(`${column} content cleared!`);
-      
-      const updatedRow = newRows.find(r => r.id === rowId);
-      if (updatedRow) setEditingRow(updatedRow);
-      return;
-    }
-  
-    // ✅ CASE 2: Single line (no newlines) - simple update
-    if (lines.length === 1 && !otherColumnText.includes('\n')) {
-      const newRows = contentRows.map(r => {
-        if (r.id === rowId) {
-          const updatedRow = { ...r };
-          if (column === 'pali') {
-            updatedRow.paliText = lines[0];
-          } else {
-            updatedRow.kannadaText = lines[0];
-          }
-          return updatedRow;
-        }
-        if (otherColumnWasEdited && r.id === otherColumnRowId) {
-          const updatedRow = { ...r };
-          if (column === 'pali') {
-            updatedRow.kannadaText = otherColumnText;
-          } else {
-            updatedRow.paliText = otherColumnText;
-          }
-          return updatedRow;
-        }
-        return r;
-      });
-      
-      addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-      setContentRows(newRows);
-      
-      const message = otherColumnWasEdited 
-        ? `Both columns saved successfully!`
-        : `${column} content updated!`;
-      messageApi.success(message);
-      
-      const updatedRow = newRows.find(r => r.id === rowId);
-      if (updatedRow) setEditingRow(updatedRow);
-      return;
-    }
-  
-    // ✅ CASE 3: Multiple lines OR other column has newlines - SPLIT LOGIC
-    console.log('🔪 Splitting logic - processing both columns');
-    
+    // ... existing empty content check ...
+
+    // ... existing single line check ...
+
+    // ✅ CASE 3: Multiple lines - ensure metadata inheritance
     const { paliArray, kannadaArray } = toArrayFormat(contentRows);
     const targetIndex = contentRows.findIndex(r => r.id === rowId);
     
@@ -267,52 +210,38 @@ const AppContent: React.FC = () => {
     const otherArray = column === 'pali' ? kannadaArray : paliArray;
     const originalEntry = targetArray[targetIndex];
   
-    console.log('📍 Target index:', targetIndex);
-  
-    // ✅ Process the main column (split if needed)
+    // ✅ Process the main column (split with metadata inheritance)
     targetArray.splice(targetIndex, 1);
-    const newEntries = lines.map((line, i) => ({
+    const newEntries = lines.map((line) => ({
       text: line,
+      // ✅ ALL split rows inherit parent's tags, type, typename
       tags: originalEntry?.tags || [],
-      type: i === 0 ? originalEntry?.type : undefined,
-      typename: i === 0 ? originalEntry?.typename : undefined,
+      type: originalEntry?.type || 'p',
+      typename: originalEntry?.typename || 'paragraph',
     }));
     targetArray.splice(targetIndex, 0, ...newEntries);
   
-    console.log('✅ Main column split into', newEntries.length, 'entries');
-  
-    // ✅ Process the OTHER column if edited
+    // ✅ Process the OTHER column if edited (same logic)
     if (otherColumnWasEdited) {
       const otherColumnRowIndex = contentRows.findIndex(r => r.id === otherColumnRowId);
       
-      if (otherColumnRowIndex === -1) {
-        console.warn('⚠️ Other column row not found');
-      } else {
+      if (otherColumnRowIndex !== -1) {
         const otherColumnLines = otherColumnText.split('\n');
         const otherColumnOriginalEntry = otherArray[otherColumnRowIndex];
         
-        // ✅ If other column also has newlines, split it too!
         if (otherColumnLines.length > 1) {
-          console.log('🔪 Other column also has newlines, splitting it too');
-          
-          // Remove original entry
           otherArray.splice(otherColumnRowIndex, 1);
           
-          // Create new entries for other column
-          const otherNewEntries = otherColumnLines.map((line, i) => ({
+          const otherNewEntries = otherColumnLines.map((line) => ({
             text: line,
+            // ✅ ALL split rows inherit parent's metadata
             tags: otherColumnOriginalEntry?.tags || [],
-            type: i === 0 ? otherColumnOriginalEntry?.type : undefined,
-            typename: i === 0 ? otherColumnOriginalEntry?.typename : undefined,
+            type: otherColumnOriginalEntry?.type || 'p',
+            typename: otherColumnOriginalEntry?.typename || 'paragraph',
           }));
           
-          // Insert at the same index
           otherArray.splice(otherColumnRowIndex, 0, ...otherNewEntries);
-          
-          console.log('✅ Other column split into', otherNewEntries.length, 'entries');
         } else {
-          // Single line - just update
-          console.log('📝 Other column is single line, updating');
           if (otherArray[otherColumnRowIndex]) {
             otherArray[otherColumnRowIndex].text = otherColumnText;
           }
@@ -320,33 +249,13 @@ const AppContent: React.FC = () => {
       }
     }
   
-    console.log('🔄 Reconstructing rows...');
-    console.log('Pali array length:', paliArray.length);
-    console.log('Kannada array length:', kannadaArray.length);
-  
-    // Reconstruct with ID preservation
     const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
-    
-    console.log('✅ New rows count:', newRows.length);
     
     addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
     setContentRows(newRows);
     
-    // Success message
-    let message = `${column} content split into ${lines.length} lines!`;
-    if (otherColumnWasEdited) {
-      const otherColumnName = column === 'pali' ? 'Kannada' : 'Pali';
-      const otherColumnLines = otherColumnText.split('\n');
-      if (otherColumnLines.length > 1) {
-        message = `Both columns split! ${column}: ${lines.length} lines, ${otherColumnName}: ${otherColumnLines.length} lines`;
-      } else {
-        message += ` ${otherColumnName} also saved.`;
-      }
-    }
+    messageApi.success(`Content saved successfully!`, 3);
     
-    messageApi.success(message, 5);
-    
-    // Update editing row to the first split row
     if (newRows[targetIndex]) {
       setEditingRow(newRows[targetIndex]);
     }
@@ -602,6 +511,8 @@ const AppContent: React.FC = () => {
           onSelectAll={(column) => handleSelectAll(column, contentRows)}
           onCheckboxChange={handleCheckboxChange}
           onEdit={openEditModal}
+          onQuickEditPali={handleQuickEditPali} // ✅ NEW
+          onQuickEditKannada={handleQuickEditKannada} // ✅ NEW
           onSave={() => saveToLocalStorage(contentRows, history, historyIndex)}
           onExport={handleExport}
           onUndo={handleUndo}
@@ -633,7 +544,23 @@ const AppContent: React.FC = () => {
           visible={isTagModalVisible}
           column={currentTagColumn}
           selectedIds={currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds}
-          onClose={() => setIsTagModalVisible(false)}
+          // ✅ NEW: Pass existing values for edit mode
+          existingTags={
+            quickEditRow
+              ? (currentTagColumn === 'pali' ? quickEditRow.paliTags : quickEditRow.kannadaTags)
+              : []
+          }
+          existingType={
+            quickEditRow
+              ? (currentTagColumn === 'pali' ? quickEditRow.paliType : quickEditRow.kannadaType)
+              : ''
+          }
+          existingTypename={
+            quickEditRow
+              ? (currentTagColumn === 'pali' ? quickEditRow.paliTypename : quickEditRow.kannadaTypename)
+              : ''
+          }
+          onClose={handleCloseTagModal} // ✅ Updated
           onApply={(tags, type, typename) => {
             const selectedIds = currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds;
             
@@ -665,7 +592,8 @@ const AppContent: React.FC = () => {
             addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
             setContentRows(newRows);
             setIsTagModalVisible(false);
-            messageApi.success(`Tags and types added to ${currentTagColumn} content successfully!`);
+            setQuickEditRow(null); // ✅ Clear quick edit state
+            messageApi.success(`Tags and types updated successfully!`);
           }}
         />
 

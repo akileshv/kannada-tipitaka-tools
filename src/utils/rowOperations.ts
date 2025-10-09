@@ -23,7 +23,6 @@ export const reconstructRows = (
     let id: string;
     if (originalRows && i < originalRows.length) {
       const originalRow = originalRows[i];
-      // Keep ID if at least one column's content matches
       const paliMatches = originalRow.paliText === (paliItem?.text || '');
       const kannadaMatches = originalRow.kannadaText === (kannadaItem?.text || '');
       
@@ -42,10 +41,11 @@ export const reconstructRows = (
       kannadaText: kannadaItem?.text || '',
       paliTags: paliItem?.tags || [],
       kannadaTags: kannadaItem?.tags || [],
-      paliType: paliItem?.type,
-      kannadaType: kannadaItem?.type,
-      paliTypename: paliItem?.typename,
-      kannadaTypename: kannadaItem?.typename,
+      // ✅ Use provided values OR defaults
+      paliType: paliItem?.type || (paliItem?.text ? 'p' : undefined),
+      kannadaType: kannadaItem?.type || (kannadaItem?.text ? 'p' : undefined),
+      paliTypename: paliItem?.typename || (paliItem?.text ? 'paragraph' : undefined),
+      kannadaTypename: kannadaItem?.typename || (kannadaItem?.text ? 'paragraph' : undefined),
     });
   }
 
@@ -67,7 +67,6 @@ export const splitRowText = (
 
   for (let i = 0; i < lines.length; i++) {
     const newRow: ContentRow = {
-      // Generate completely unique ID for each split row
       id: i === 0 ? row.id : generateUniqueId(),
       paliText: '',
       kannadaText: '',
@@ -75,6 +74,11 @@ export const splitRowText = (
     
     if (column === 'pali') {
       newRow.paliText = lines[i];
+      // ✅ ALL split rows inherit parent metadata
+      newRow.paliTags = [...(row.paliTags || [])];
+      newRow.paliType = row.paliType || 'p';
+      newRow.paliTypename = row.paliTypename || 'paragraph';
+      
       if (i === 0) {
         // First row keeps the other column's data
         newRow.kannadaText = row.kannadaText;
@@ -84,6 +88,11 @@ export const splitRowText = (
       }
     } else {
       newRow.kannadaText = lines[i];
+      // ✅ ALL split rows inherit parent metadata
+      newRow.kannadaTags = [...(row.kannadaTags || [])];
+      newRow.kannadaType = row.kannadaType || 'p';
+      newRow.kannadaTypename = row.kannadaTypename || 'paragraph';
+      
       if (i === 0) {
         // First row keeps the other column's data
         newRow.paliText = row.paliText;
@@ -108,8 +117,9 @@ export const toArrayFormat = (contentRows: ContentRow[]): { paliArray: ArrayEntr
       paliArray.push({
         text: row.paliText,
         tags: row.paliTags,
-        type: row.paliType,
-        typename: row.paliTypename,
+        // ✅ Preserve existing or use defaults
+        type: row.paliType || (row.paliText ? 'p' : undefined),
+        typename: row.paliTypename || (row.paliText ? 'paragraph' : undefined),
       });
     } else {
       paliArray.push({ text: '' });
@@ -119,8 +129,9 @@ export const toArrayFormat = (contentRows: ContentRow[]): { paliArray: ArrayEntr
       kannadaArray.push({
         text: row.kannadaText,
         tags: row.kannadaTags,
-        type: row.kannadaType,
-        typename: row.kannadaTypename,
+        // ✅ Preserve existing or use defaults
+        type: row.kannadaType || (row.kannadaText ? 'p' : undefined),
+        typename: row.kannadaTypename || (row.kannadaText ? 'paragraph' : undefined),
       });
     } else {
       kannadaArray.push({ text: '' });

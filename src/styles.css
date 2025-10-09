@@ -329,4 +329,70 @@
     .clickable-content:hover::after {
         opacity: 0.5;
     }
+    /* ✅ Clickable tag hover effects */
+    .ant-tag {
+      transition: all 0.2s ease;
+    }
+
+    .ant-tag[style*="cursor: pointer"]:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      filter: brightness(1.2);
+    }
+
+    /* ✅ Checkbox tooltip */
+    .ant-checkbox-wrapper {
+      transition: all 0.2s ease;
+    }
+
+    .ant-checkbox-wrapper:hover {
+      transform: scale(1.05);
+    }
+
+    /* ... existing styles ... */
+
+  /* ✅ Double-click text area visual feedback */
+  .clickable-content {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .clickable-content:hover {
+    background: rgba(24, 144, 255, 0.05) !important;
+  }
+
+  .clickable-content:active {
+    transform: scale(0.99);
+  }
+
+  /* ✅ Checkbox wrapper hover effect */
+  div[style*="cursor: pointer"] {
+    transition: all 0.2s ease;
+  }
+
+  div[style*="cursor: pointer"]:hover {
+    transform: scale(1.1);
+  }
+
+  div[style*="cursor: pointer"]:active {
+    transform: scale(0.95);
+  }
+
+  /* ✅ Clickable tag hover effects */
+  .ant-tag {
+    transition: all 0.2s ease;
+  }
+
+  .ant-tag[style*="cursor: pointer"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    filter: brightness(1.2);
+  }
+
+  .ant-tag[style*="cursor: pointer"]:active {
+    transform: translateY(0);
+  }
+
+/* ... rest of existing styles ... */
   }

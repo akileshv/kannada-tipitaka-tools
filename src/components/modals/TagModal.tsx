@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Space, Button, Typography, Tag, Select, Divider } from 'antd';
-import { TagsOutlined, PlusOutlined } from '@ant-design/icons';
-// import type { ContentRow } from '../../types';
+import { TagsOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -9,6 +8,10 @@ interface TagModalProps {
   visible: boolean;
   column: 'pali' | 'kannada';
   selectedIds: Set<string>;
+  // ✅ New: Existing values for edit mode
+  existingTags?: string[];
+  existingType?: string;
+  existingTypename?: string;
   onClose: () => void;
   onApply: (tags: string[], type: string, typename: string) => void;
 }
@@ -17,6 +20,9 @@ export const TagModal: React.FC<TagModalProps> = ({
   visible,
   column,
   selectedIds,
+  existingTags = [],
+  existingType = '',
+  existingTypename = '',
   onClose,
   onApply,
 }) => {
@@ -25,15 +31,18 @@ export const TagModal: React.FC<TagModalProps> = ({
   const [typeInput, setTypeInput] = useState<string>('');
   const [typenameInput, setTypenameInput] = useState<string>('');
 
-  // Reset state when modal opens
+  // ✅ Determine if we're in edit mode
+  const isEditMode = existingTags.length > 0 || existingType || existingTypename;
+
+  // ✅ Pre-fill with existing values when modal opens
   useEffect(() => {
     if (visible) {
+      setTagItems(existingTags || []);
+      setTypeInput(existingType || '');
+      setTypenameInput(existingTypename || '');
       setTagInput('');
-      setTagItems([]);
-      setTypeInput('');
-      setTypenameInput('');
     }
-  }, [visible]);
+  }, [visible, existingTags, existingType, existingTypename]);
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tagItems.includes(tagInput.trim())) {
@@ -64,14 +73,20 @@ export const TagModal: React.FC<TagModalProps> = ({
     <Modal
       title={
         <Space>
-          <TagsOutlined style={{ color: column === 'pali' ? '#1890ff' : '#52c41a' }} />
-          <span>Add Tags and Types to {column === 'pali' ? 'Pali' : 'Kannada'} Content</span>
+          {isEditMode ? (
+            <EditOutlined style={{ color: column === 'pali' ? '#1890ff' : '#52c41a' }} />
+          ) : (
+            <TagsOutlined style={{ color: column === 'pali' ? '#1890ff' : '#52c41a' }} />
+          )}
+          <span>
+            {isEditMode ? 'Edit' : 'Add'} Tags and Types - {column === 'pali' ? 'Pali' : 'Kannada'}
+          </span>
         </Space>
       }
       open={visible}
       onOk={handleApply}
       onCancel={onClose}
-      okText="Apply"
+      okText={isEditMode ? "Update" : "Apply"}
       cancelText="Cancel"
       width={700}
       okButtonProps={{
@@ -87,11 +102,12 @@ export const TagModal: React.FC<TagModalProps> = ({
         {selectedIds.size > 0 && (
           <div style={{ 
             padding: '12px', 
-            background: '#1f1f1f', 
+            background: isEditMode ? '#2a1f0a' : '#1f1f1f',
             borderRadius: '6px',
             borderLeft: `3px solid ${column === 'pali' ? '#1890ff' : '#52c41a'}`
           }}>
             <Text style={{ color: '#e0e3e7' }}>
+              {isEditMode && <strong>✏️ Edit Mode: </strong>}
               <strong>{selectedIds.size}</strong> {column} row{selectedIds.size > 1 ? 's' : ''} selected
             </Text>
           </div>
@@ -125,7 +141,9 @@ export const TagModal: React.FC<TagModalProps> = ({
           </Space.Compact>
           {tagItems && tagItems.length > 0 && (
             <div style={{ marginTop: '12px' }}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>Current tags:</Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {isEditMode ? 'Current tags:' : 'Tags to add:'}
+              </Text>
               <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                 {tagItems.map((tag, index) => (
                   <Tag
@@ -203,15 +221,31 @@ export const TagModal: React.FC<TagModalProps> = ({
             <Text type="secondary">
               <strong>💡 Note:</strong>
             </Text>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              • Tags will be added to existing tags (duplicates will be removed)
-            </Text>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              • Type and Typename will replace existing values
-            </Text>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              • These attributes will be applied to all selected {column} rows
-            </Text>
+            {isEditMode ? (
+              <>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  • You are editing existing metadata
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  • Tags will be merged (new tags added to existing ones)
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  • Type and Typename will replace current values
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  • Tags will be added to existing tags (duplicates will be removed)
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  • Type and Typename will replace existing values
+                </Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  • These attributes will be applied to all selected {column} rows
+                </Text>
+              </>
+            )}
           </Space>
         </div>
       </Space>

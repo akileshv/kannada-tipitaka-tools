@@ -29,13 +29,15 @@ export const parseFileContent = (
         if (column === 'pali') {
           newRows[index].paliText = item.text || '';
           newRows[index].paliTags = item.tags || [];
-          newRows[index].paliType = item.type;
-          newRows[index].paliTypename = item.typename;
+          // ✅ Use provided values OR defaults
+          newRows[index].paliType = item.type || 'p';
+          newRows[index].paliTypename = item.typename || 'paragraph';
         } else {
           newRows[index].kannadaText = item.text || '';
           newRows[index].kannadaTags = item.tags || [];
-          newRows[index].kannadaType = item.type;
-          newRows[index].kannadaTypename = item.typename;
+          // ✅ Use provided values OR defaults
+          newRows[index].kannadaType = item.type || 'p';
+          newRows[index].kannadaTypename = item.typename || 'paragraph';
         }
       } else {
         if (column === 'pali') {
@@ -45,9 +47,10 @@ export const parseFileContent = (
             kannadaText: '',
             paliTags: item.tags || [],
             kannadaTags: [],
-            paliType: item.type,
+            // ✅ Set defaults for new rows
+            paliType: item.type || 'p',
             kannadaType: undefined,
-            paliTypename: item.typename,
+            paliTypename: item.typename || 'paragraph',
             kannadaTypename: undefined,
           });
         } else {
@@ -57,10 +60,11 @@ export const parseFileContent = (
             kannadaText: item.text || '',
             paliTags: [],
             kannadaTags: item.tags || [],
+            // ✅ Set defaults for new rows
             paliType: undefined,
-            kannadaType: item.type,
+            kannadaType: item.type || 'p',
             paliTypename: undefined,
-            kannadaTypename: item.typename,
+            kannadaTypename: item.typename || 'paragraph',
           });
         }
       }
@@ -75,14 +79,27 @@ export const parseFileContent = (
         if (index < newRows.length) {
           if (column === 'pali') {
             newRows[index].paliText = line;
+            // ✅ Set defaults if not already set
+            if (!newRows[index].paliType) newRows[index].paliType = 'p';
+            if (!newRows[index].paliTypename) newRows[index].paliTypename = 'paragraph';
           } else {
             newRows[index].kannadaText = line;
+            // ✅ Set defaults if not already set
+            if (!newRows[index].kannadaType) newRows[index].kannadaType = 'p';
+            if (!newRows[index].kannadaTypename) newRows[index].kannadaTypename = 'paragraph';
           }
         } else {
+          // ✅ New rows get defaults
           newRows.push({
             id: generateUniqueId(),
             paliText: column === 'pali' ? line : '',
             kannadaText: column === 'kannada' ? line : '',
+            paliTags: [],
+            kannadaTags: [],
+            paliType: column === 'pali' ? 'p' : undefined,
+            kannadaType: column === 'kannada' ? 'p' : undefined,
+            paliTypename: column === 'pali' ? 'paragraph' : undefined,
+            kannadaTypename: column === 'kannada' ? 'paragraph' : undefined,
           });
         }
       }
@@ -101,7 +118,6 @@ export const exportData = (
   let dataToExport;
 
   if (exportType === 'both') {
-    // ✅ Don't filter - export ALL rows including empty ones
     dataToExport = contentRows.map(row => ({
       id: row.id,
       paliText: row.paliText,
@@ -114,19 +130,17 @@ export const exportData = (
       ...(row.kannadaTypename && { kannadaTypename: row.kannadaTypename }),
     }));
   } else if (exportType === 'pali') {
-    // ✅ Export all rows, even if paliText is empty (might have metadata)
     dataToExport = contentRows.map(row => ({
       id: row.id,
-      text: row.paliText, // Keep empty strings
+      text: row.paliText,
       ...(row.paliTags && row.paliTags.length > 0 && { tags: row.paliTags }),
       ...(row.paliType && { type: row.paliType }),
       ...(row.paliTypename && { typename: row.paliTypename }),
     }));
   } else {
-    // ✅ Export all rows, even if kannadaText is empty
     dataToExport = contentRows.map(row => ({
       id: row.id,
-      text: row.kannadaText, // Keep empty strings
+      text: row.kannadaText,
       ...(row.kannadaTags && row.kannadaTags.length > 0 && { tags: row.kannadaTags }),
       ...(row.kannadaType && { type: row.kannadaType }),
       ...(row.kannadaTypename && { typename: row.kannadaTypename }),
