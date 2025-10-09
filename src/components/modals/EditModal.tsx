@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Input, Space, Button, Typography, Divider, Tag, Alert } from 'antd';
+import { App as AntApp } from 'antd';
 import {
   EditOutlined,
   SaveOutlined,
@@ -22,6 +23,8 @@ interface EditModalProps {
   onSavePali: (rowId: string, newText: string, otherColumnText: string, otherColumnRowId: string) => void;
   onSaveKannada: (rowId: string, newText: string, otherColumnText: string, otherColumnRowId: string) => void;
   onNavigate: (rowId: string) => void;
+  onMergePali: (currentIndex: number, direction: 'prev' | 'next') => void;      // ✅ ADD
+  onMergeKannada: (currentIndex: number, direction: 'prev' | 'next') => void;   // ✅ ADD
 }
 
 export const EditModal: React.FC<EditModalProps> = ({
@@ -31,7 +34,10 @@ export const EditModal: React.FC<EditModalProps> = ({
   onClose,
   onSavePali,
   onSaveKannada,
+  onMergePali,
+  onMergeKannada,
 }) => {
+
   const [currentPaliIndex, setCurrentPaliIndex] = useState<number>(0);
   const [currentKannadaIndex, setCurrentKannadaIndex] = useState<number>(0);
   
@@ -202,6 +208,18 @@ export const EditModal: React.FC<EditModalProps> = ({
     handleNavigatePali(direction);
     handleNavigateKannada(direction);
   }, [handleNavigatePali, handleNavigateKannada]);
+
+  // Add merge handlers after the navigation handlers
+    // ✅ ADD these two simple handlers (inside the component)
+    const handleMergePali = useCallback((direction: 'prev' | 'next') => {
+      onMergePali(currentPaliIndex, direction);
+    }, [currentPaliIndex, onMergePali]);
+  
+    const handleMergeKannada = useCallback((direction: 'prev' | 'next') => {
+      onMergeKannada(currentKannadaIndex, direction);
+    }, [currentKannadaIndex, onMergeKannada]);
+
+
 
   // Helper functions for button states
   const canNavigatePaliPrev = currentPaliIndex > 0;
@@ -395,6 +413,31 @@ export const EditModal: React.FC<EditModalProps> = ({
               borderWidth: '2px',
             }}
           />
+
+          {/* Pali Merge Buttons */}
+          <div style={{ 
+            marginTop: '8px',
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'flex-end'
+          }}>
+            <Button
+              size="small"
+              onClick={() => handleMergePali('prev')}
+              disabled={currentPaliIndex === 0}
+              style={{ borderColor: '#1890ff', color: '#1890ff' }}
+            >
+              ⬆️ Merge with Previous
+            </Button>
+            <Button
+              size="small"
+              onClick={() => handleMergePali('next')}
+              disabled={currentPaliIndex >= allRows.length - 1}
+              style={{ borderColor: '#1890ff', color: '#1890ff' }}
+            >
+              Merge with Next ⬇️
+            </Button>
+</div>
           
           {/* Pali Navigation */}
           <div style={{ 
@@ -510,6 +553,32 @@ export const EditModal: React.FC<EditModalProps> = ({
               borderWidth: '2px',
             }}
           />
+          
+          {/* Kannada Merge Buttons */}
+          <div style={{ 
+            marginTop: '8px',
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'flex-end'
+          }}>
+            <Button
+              size="small"
+              onClick={() => handleMergeKannada('prev')}
+              disabled={currentKannadaIndex === 0}
+              style={{ borderColor: '#52c41a', color: '#52c41a' }}
+            >
+              ⬆️ Merge with Previous
+            </Button>
+            <Button
+              size="small"
+              onClick={() => handleMergeKannada('next')}
+              disabled={currentKannadaIndex >= allRows.length - 1}
+              style={{ borderColor: '#52c41a', color: '#52c41a' }}
+            >
+              Merge with Next ⬇️
+            </Button>
+          </div>
+
           {
           /* Kannada Navigation */}
           <div style={{ 

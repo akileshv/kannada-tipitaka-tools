@@ -255,6 +255,129 @@ const AppContent: React.FC = () => {
     }
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setEditingRow]);
 
+  // ✅ ADD THESE TWO FUNCTIONS TO APP.TSX
+  const handleMergePali = useCallback((currentIndex: number, direction: 'prev' | 'next') => {
+    const targetIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
+    
+    if (targetIndex < 0 || targetIndex >= contentRows.length) {
+      messageApi.warning('Cannot merge: no adjacent row');
+      return;
+    }
+  
+    const currentRow = contentRows[currentIndex];
+    const targetRow = contentRows[targetIndex];
+  
+    if (!currentRow || !targetRow) return;
+  
+    // ✅ Use array format to merge only Pali column
+    const { paliArray, kannadaArray } = toArrayFormat(contentRows);
+  
+    // Merge Pali texts with space
+    const mergedText = direction === 'prev'
+      ? `${paliArray[targetIndex]?.text || ''} ${paliArray[currentIndex]?.text || ''}`.trim()
+      : `${paliArray[currentIndex]?.text || ''} ${paliArray[targetIndex]?.text || ''}`.trim();
+  
+    // Merge Pali tags
+    const mergedTags = [
+      ...new Set([
+        ...(paliArray[currentIndex]?.tags || []),
+        ...(paliArray[targetIndex]?.tags || [])
+      ])
+    ];
+  
+    // ✅ Modify only paliArray, keep kannadaArray unchanged
+    if (direction === 'prev') {
+      // Merge into previous, delete current
+      paliArray[targetIndex] = {
+        ...paliArray[targetIndex],
+        text: mergedText,
+        tags: mergedTags,
+      };
+      paliArray.splice(currentIndex, 1);
+    } else {
+      // Merge into current, delete next
+      paliArray[currentIndex] = {
+        ...paliArray[currentIndex],
+        text: mergedText,
+        tags: mergedTags,
+      };
+      paliArray.splice(targetIndex, 1);
+    }
+  
+    // ✅ Reconstruct rows - kannadaArray stays intact!
+    const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
+    
+    addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
+    setContentRows(newRows);
+    messageApi.success(`Pali rows merged successfully!`);
+    
+    const mergedRowIndex = direction === 'prev' ? targetIndex : currentIndex;
+    if (newRows[mergedRowIndex]) {
+      setEditingRow(newRows[mergedRowIndex]);
+    }
+  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setEditingRow]);
+  
+  const handleMergeKannada = useCallback((currentIndex: number, direction: 'prev' | 'next') => {
+    const targetIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
+    
+    if (targetIndex < 0 || targetIndex >= contentRows.length) {
+      messageApi.warning('Cannot merge: no adjacent row');
+      return;
+    }
+  
+    const currentRow = contentRows[currentIndex];
+    const targetRow = contentRows[targetIndex];
+  
+    if (!currentRow || !targetRow) return;
+  
+    // ✅ Use array format to merge only Kannada column
+    const { paliArray, kannadaArray } = toArrayFormat(contentRows);
+  
+    // Merge Kannada texts with space
+    const mergedText = direction === 'prev'
+      ? `${kannadaArray[targetIndex]?.text || ''} ${kannadaArray[currentIndex]?.text || ''}`.trim()
+      : `${kannadaArray[currentIndex]?.text || ''} ${kannadaArray[targetIndex]?.text || ''}`.trim();
+  
+    // Merge Kannada tags
+    const mergedTags = [
+      ...new Set([
+        ...(kannadaArray[currentIndex]?.tags || []),
+        ...(kannadaArray[targetIndex]?.tags || [])
+      ])
+    ];
+  
+    // ✅ Modify only kannadaArray, keep paliArray unchanged
+    if (direction === 'prev') {
+      // Merge into previous, delete current
+      kannadaArray[targetIndex] = {
+        ...kannadaArray[targetIndex],
+        text: mergedText,
+        tags: mergedTags,
+      };
+      kannadaArray.splice(currentIndex, 1);
+    } else {
+      // Merge into current, delete next
+      kannadaArray[currentIndex] = {
+        ...kannadaArray[currentIndex],
+        text: mergedText,
+        tags: mergedTags,
+      };
+      kannadaArray.splice(targetIndex, 1);
+    }
+  
+    // ✅ Reconstruct rows - paliArray stays intact!
+    const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
+    
+    addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
+    setContentRows(newRows);
+    messageApi.success(`Kannada rows merged successfully!`);
+    
+    const mergedRowIndex = direction === 'prev' ? targetIndex : currentIndex;
+    if (newRows[mergedRowIndex]) {
+      setEditingRow(newRows[mergedRowIndex]);
+    }
+  }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setEditingRow]);
+
   // Merge handler
   const handleMerge = useCallback((column: 'pali' | 'kannada') => {
     const selectedIds = column === 'pali' ? selectedPaliIds : selectedKannadaIds;
@@ -532,6 +655,8 @@ const AppContent: React.FC = () => {
             handleEditSave(rowId, 'kannada', text, otherColumnText, otherColumnRowId)
           }
           onNavigate={handleNavigateRow}
+          onMergePali={handleMergePali}        // ✅ ADD THIS
+          onMergeKannada={handleMergeKannada}  // ✅ ADD THIS
         />
 
         <TagModal
