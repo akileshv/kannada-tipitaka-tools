@@ -185,7 +185,7 @@ const AppContent: React.FC = () => {
       return;
     }
   
-    const lines = newText.split('\n');
+    const lines = newText.split('\n');  // ✅ Don't filter - preserve all lines including empty ones
     const otherColumnRow = contentRows.find(r => r.id === otherColumnRowId);
   
     const otherColumnOriginalText = otherColumnRow 
@@ -193,11 +193,9 @@ const AppContent: React.FC = () => {
       : '';
     const otherColumnWasEdited = otherColumnText !== otherColumnOriginalText;
   
-    // ... existing empty content check ...
-
-    // ... existing single line check ...
-
-    // ✅ CASE 3: Multiple lines - ensure metadata inheritance
+    // ✅ REMOVED: Don't check for empty content - allow it
+    // ✅ REMOVED: Don't filter empty lines - they're intentional
+  
     const { paliArray, kannadaArray } = toArrayFormat(contentRows);
     const targetIndex = contentRows.findIndex(r => r.id === rowId);
     
@@ -210,42 +208,34 @@ const AppContent: React.FC = () => {
     const otherArray = column === 'pali' ? kannadaArray : paliArray;
     const originalEntry = targetArray[targetIndex];
   
-    // ✅ Process the main column (split with metadata inheritance)
+    // ✅ Process ALL lines including empty ones (preserve leading/trailing newlines)
     targetArray.splice(targetIndex, 1);
     const newEntries = lines.map((line) => ({
-      text: line,
-      // ✅ ALL split rows inherit parent's tags, type, typename
+      text: line,  // ✅ Keep as-is, even if empty string
       tags: originalEntry?.tags || [],
       type: originalEntry?.type || 'p',
       typename: originalEntry?.typename || 'paragraph',
     }));
     targetArray.splice(targetIndex, 0, ...newEntries);
   
-    // ✅ Process the OTHER column if edited (same logic)
+    // ✅ Process the OTHER column if edited (same logic - preserve empty lines)
     if (otherColumnWasEdited) {
       const otherColumnRowIndex = contentRows.findIndex(r => r.id === otherColumnRowId);
       
       if (otherColumnRowIndex !== -1) {
-        const otherColumnLines = otherColumnText.split('\n');
+        const otherColumnLines = otherColumnText.split('\n');  // ✅ Don't filter
         const otherColumnOriginalEntry = otherArray[otherColumnRowIndex];
         
-        if (otherColumnLines.length > 1) {
-          otherArray.splice(otherColumnRowIndex, 1);
-          
-          const otherNewEntries = otherColumnLines.map((line) => ({
-            text: line,
-            // ✅ ALL split rows inherit parent's metadata
-            tags: otherColumnOriginalEntry?.tags || [],
-            type: otherColumnOriginalEntry?.type || 'p',
-            typename: otherColumnOriginalEntry?.typename || 'paragraph',
-          }));
-          
-          otherArray.splice(otherColumnRowIndex, 0, ...otherNewEntries);
-        } else {
-          if (otherArray[otherColumnRowIndex]) {
-            otherArray[otherColumnRowIndex].text = otherColumnText;
-          }
-        }
+        otherArray.splice(otherColumnRowIndex, 1);
+        
+        const otherNewEntries = otherColumnLines.map((line) => ({
+          text: line,  // ✅ Keep as-is, even if empty string
+          tags: otherColumnOriginalEntry?.tags || [],
+          type: otherColumnOriginalEntry?.type || 'p',
+          typename: otherColumnOriginalEntry?.typename || 'paragraph',
+        }));
+        
+        otherArray.splice(otherColumnRowIndex, 0, ...otherNewEntries);
       }
     }
   
