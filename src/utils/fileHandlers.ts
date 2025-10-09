@@ -72,39 +72,38 @@ export const parseFileContent = (
 
     return newRows;
   } else if (fileName.endsWith('.txt')) {
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-
+    // ✅ For .txt uploads: remove empty lines and trim
+    const lines = content
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0); // ✅ Remove blanks on upload
+  
     lines.forEach((line, index) => {
-      if (line.trim()) {
-        if (index < newRows.length) {
-          if (column === 'pali') {
-            newRows[index].paliText = line;
-            // ✅ Set defaults if not already set
-            if (!newRows[index].paliType) newRows[index].paliType = 'p';
-            if (!newRows[index].paliTypename) newRows[index].paliTypename = 'paragraph';
-          } else {
-            newRows[index].kannadaText = line;
-            // ✅ Set defaults if not already set
-            if (!newRows[index].kannadaType) newRows[index].kannadaType = 'p';
-            if (!newRows[index].kannadaTypename) newRows[index].kannadaTypename = 'paragraph';
-          }
+      if (index < newRows.length) {
+        if (column === 'pali') {
+          newRows[index].paliText = line;
+          if (!newRows[index].paliType) newRows[index].paliType = 'p';
+          if (!newRows[index].paliTypename) newRows[index].paliTypename = 'paragraph';
         } else {
-          // ✅ New rows get defaults
-          newRows.push({
-            id: generateUniqueId(),
-            paliText: column === 'pali' ? line : '',
-            kannadaText: column === 'kannada' ? line : '',
-            paliTags: [],
-            kannadaTags: [],
-            paliType: column === 'pali' ? 'p' : undefined,
-            kannadaType: column === 'kannada' ? 'p' : undefined,
-            paliTypename: column === 'pali' ? 'paragraph' : undefined,
-            kannadaTypename: column === 'kannada' ? 'paragraph' : undefined,
-          });
+          newRows[index].kannadaText = line;
+          if (!newRows[index].kannadaType) newRows[index].kannadaType = 'p';
+          if (!newRows[index].kannadaTypename) newRows[index].kannadaTypename = 'paragraph';
         }
+      } else {
+        newRows.push({
+          id: generateUniqueId(),
+          paliText: column === 'pali' ? line : '',
+          kannadaText: column === 'kannada' ? line : '',
+          paliTags: [],
+          kannadaTags: [],
+          paliType: column === 'pali' ? 'p' : undefined,
+          kannadaType: column === 'kannada' ? 'p' : undefined,
+          paliTypename: column === 'pali' ? 'paragraph' : undefined,
+          kannadaTypename: column === 'kannada' ? 'paragraph' : undefined,
+        });
       }
     });
-
+  
     return newRows;
   }
 

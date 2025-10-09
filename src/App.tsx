@@ -185,16 +185,16 @@ const AppContent: React.FC = () => {
       return;
     }
   
-    const lines = newText.split('\n');  // ✅ Don't filter - preserve all lines including empty ones
+    // ✅ For manual edits: preserve ALL lines including empty ones
+    // Just normalize line endings, don't filter or trim
+    const lines = newText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  
     const otherColumnRow = contentRows.find(r => r.id === otherColumnRowId);
   
     const otherColumnOriginalText = otherColumnRow 
       ? (column === 'pali' ? otherColumnRow.kannadaText : otherColumnRow.paliText)
       : '';
     const otherColumnWasEdited = otherColumnText !== otherColumnOriginalText;
-  
-    // ✅ REMOVED: Don't check for empty content - allow it
-    // ✅ REMOVED: Don't filter empty lines - they're intentional
   
     const { paliArray, kannadaArray } = toArrayFormat(contentRows);
     const targetIndex = contentRows.findIndex(r => r.id === rowId);
@@ -208,28 +208,32 @@ const AppContent: React.FC = () => {
     const otherArray = column === 'pali' ? kannadaArray : paliArray;
     const originalEntry = targetArray[targetIndex];
   
-    // ✅ Process ALL lines including empty ones (preserve leading/trailing newlines)
+    // ✅ Process the main column - keep ALL lines (empty or not)
     targetArray.splice(targetIndex, 1);
     const newEntries = lines.map((line) => ({
-      text: line,  // ✅ Keep as-is, even if empty string
+      text: line, // ✅ No trim, no filter - preserve exactly as typed
       tags: originalEntry?.tags || [],
       type: originalEntry?.type || 'p',
       typename: originalEntry?.typename || 'paragraph',
     }));
     targetArray.splice(targetIndex, 0, ...newEntries);
   
-    // ✅ Process the OTHER column if edited (same logic - preserve empty lines)
+    // ✅ Process the OTHER column if edited - same logic
     if (otherColumnWasEdited) {
       const otherColumnRowIndex = contentRows.findIndex(r => r.id === otherColumnRowId);
       
       if (otherColumnRowIndex !== -1) {
-        const otherColumnLines = otherColumnText.split('\n');  // ✅ Don't filter
+        const otherColumnLines = otherColumnText
+          .replace(/\r\n/g, '\n')
+          .replace(/\r/g, '\n')
+          .split('\n'); // ✅ No filter, no trim
+        
         const otherColumnOriginalEntry = otherArray[otherColumnRowIndex];
         
         otherArray.splice(otherColumnRowIndex, 1);
         
         const otherNewEntries = otherColumnLines.map((line) => ({
-          text: line,  // ✅ Keep as-is, even if empty string
+          text: line, // ✅ Preserve exactly as typed
           tags: otherColumnOriginalEntry?.tags || [],
           type: otherColumnOriginalEntry?.type || 'p',
           typename: otherColumnOriginalEntry?.typename || 'paragraph',
