@@ -198,6 +198,11 @@ export const EditModal: React.FC<EditModalProps> = ({
     }
   }, [currentKannadaIndex, allRows.length]);
 
+  const handleNavigateBoth = useCallback((direction: 'prev' | 'next') => {
+    handleNavigatePali(direction);
+    handleNavigateKannada(direction);
+  }, [handleNavigatePali, handleNavigateKannada]);
+
   // Helper functions for button states
   const canNavigatePaliPrev = currentPaliIndex > 0;
   const canNavigatePaliNext = currentPaliIndex < allRows.length - 1;
@@ -225,6 +230,14 @@ export const EditModal: React.FC<EditModalProps> = ({
         e.preventDefault();
         handleNavigateKannada('next');
       }
+      if (e.altKey && e.ctrlKey && e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleNavigateBoth('prev');
+      }
+      if (e.altKey && e.ctrlKey && e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleNavigateBoth('next');
+      }
       if (e.key === 'F11') {
         e.preventDefault();
         setIsFullscreen(prev => !prev);
@@ -233,7 +246,7 @@ export const EditModal: React.FC<EditModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [visible, handleNavigatePali, handleNavigateKannada]);
+  }, [visible, handleNavigatePali, handleNavigateKannada, handleNavigateBoth]);
 
   if (!editingRow || allRows.length === 0) return null;
 
@@ -497,8 +510,8 @@ export const EditModal: React.FC<EditModalProps> = ({
               borderWidth: '2px',
             }}
           />
-          
-          {/* Kannada Navigation */}
+          {
+          /* Kannada Navigation */}
           <div style={{ 
             marginTop: '8px',
             display: 'flex',
@@ -543,6 +556,46 @@ export const EditModal: React.FC<EditModalProps> = ({
                 Tags: {currentKannadaRow.kannadaTags.join(', ')}
               </Text>
             )}
+          </div>
+          {/* both Navigation */}
+          <div style={{ 
+            marginTop: '8px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '8px',
+            background: '#1f1f1f',
+            borderRadius: '4px',
+          }}>
+            <Space>
+            <Button
+              icon={<LeftOutlined />}
+              onClick={() => handleNavigateBoth('prev')}
+              disabled={(!canNavigateKannadaPrev || !canNavigatePaliPrev) || (currentKannadaIndex !== currentPaliIndex)}
+              size="small"
+              style={{ 
+                borderColor: '#52c41a', 
+                color: (canNavigateKannadaPrev && canNavigatePaliPrev) ? '#52c41a' : '#666' 
+              }}
+            >
+              Previous
+            </Button>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Alt + Ctrl + ↑/↓
+              </Text>
+              <Button
+                icon={<RightOutlined />}
+                onClick={() => handleNavigateBoth('next')}
+                disabled={(!canNavigateKannadaNext || !canNavigatePaliNext) || (currentKannadaIndex !== currentPaliIndex)}
+                size="small"
+                style={{ 
+                  borderColor: '#52c41a', 
+                  color: (canNavigateKannadaNext && canNavigatePaliNext) ? '#52c41a' : '#666' 
+                }}
+              >
+                Next
+              </Button>
+            </Space>
           </div>
           {(currentKannadaRow?.kannadaType || currentKannadaRow?.kannadaTypename) && (
             <div style={{ 
