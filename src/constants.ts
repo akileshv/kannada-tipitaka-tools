@@ -16,6 +16,12 @@ export const TYPE_STYLES: Record<string, React.CSSProperties> = {
   paragraph: { fontSize: '14px', margin: 0, lineHeight: 1.6 },
   stanza: { fontSize: '14px', fontStyle: 'italic', margin: 0, lineHeight: 1.6 },
   '(empty)': { fontSize: '14px', fontStyle: 'italic', margin: 0, lineHeight: 1.6 },
+  'vagga': { fontSize: '20px', fontWeight: 'bold', margin: 0, lineHeight: 1.4 },
+  'nikaya': { fontSize: '20px', fontWeight: 'bold', margin: 0, lineHeight: 1.4 },
+  'sutta': { fontSize: '20px', fontWeight: 'bold', margin: 0, lineHeight: 1.4 },
+  'namo-tasa': { fontSize: '20px', fontWeight: 'bold', margin: 0, lineHeight: 1.4 },
+  'samyutta': { fontSize: '20px', fontWeight: 'bold', margin: 0, lineHeight: 1.4 },
+  'sub-vagga': { fontSize: '18px', fontWeight: 'bold', margin: 0, lineHeight: 1.4 },
   blockquote: { 
     fontSize: '14px', 
     fontStyle: 'italic', 

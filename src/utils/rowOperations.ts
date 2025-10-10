@@ -108,6 +108,38 @@ export const splitRowText = (
   return updatedRows;
 };
 
+// Add this function at the end of the file
+
+export const removeTrailingEmptyRows = (contentRows: ContentRow[]): ContentRow[] => {
+  if (contentRows.length === 0) return contentRows;
+  
+  let lastNonEmptyIndex = -1;
+  
+  // Find the last row that has actual content or typename "(empty)"
+  for (let i = contentRows.length - 1; i >= 0; i--) {
+    const row = contentRows[i];
+    
+    // Check if Pali has content or is intentionally empty
+    const paliHasContent = row.paliText.trim() !== '' || 
+                           (row.paliTags && row.paliTags.length > 0) ||
+                           row.paliTypename === '(empty)';
+    
+    // Check if Kannada has content or is intentionally empty
+    const kannadaHasContent = row.kannadaText.trim() !== '' || 
+                              (row.kannadaTags && row.kannadaTags.length > 0) ||
+                              row.kannadaTypename === '(empty)';
+    
+    // If either column has content, this is our last non-empty row
+    if (paliHasContent || kannadaHasContent) {
+      lastNonEmptyIndex = i;
+      break;
+    }
+  }
+  
+  // Return rows up to and including the last non-empty row
+  return contentRows.slice(0, lastNonEmptyIndex + 1);
+};
+
 export const toArrayFormat = (contentRows: ContentRow[]): { paliArray: ArrayEntry[], kannadaArray: ArrayEntry[] } => {
   const paliArray: ArrayEntry[] = [];
   const kannadaArray: ArrayEntry[] = [];

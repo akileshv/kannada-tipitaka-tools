@@ -9,7 +9,7 @@ import { useHistory } from './hooks/useHistory';
 import { useSelection } from './hooks/useSelection';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { parseFileContent, exportData, downloadJSON } from './utils/fileHandlers';
-import { toArrayFormat, reconstructRows } from './utils/rowOperations';
+import { toArrayFormat, reconstructRows, removeTrailingEmptyRows } from './utils/rowOperations';
 import { Header } from './components/Header';
 import { UploadSection } from './components/UploadSection';
 import { ActionPanel } from './components/ActionPanel';
@@ -120,14 +120,6 @@ const AppContent: React.FC = () => {
     setQuickEditRow(null);
   }, []);
 
-  // Keyboard shortcuts
-  useKeyboardShortcuts({
-    onUndo: handleUndo,
-    onRedo: handleRedo,
-    canUndo: historyIndex > 0,
-    canRedo: historyIndex < history.length - 1,
-  });
-
   // File upload handler
   const handleFileUpload = useCallback((file: File, column: 'pali' | 'kannada') => {
     try {
@@ -185,8 +177,6 @@ const AppContent: React.FC = () => {
       return;
     }
   
-    // ✅ For manual edits: preserve ALL lines including empty ones
-    // Just normalize line endings, don't filter or trim
     const lines = newText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   
     const otherColumnRow = contentRows.find(r => r.id === otherColumnRowId);
@@ -208,17 +198,15 @@ const AppContent: React.FC = () => {
     const otherArray = column === 'pali' ? kannadaArray : paliArray;
     const originalEntry = targetArray[targetIndex];
   
-    // ✅ Process the main column - keep ALL lines (empty or not)
     targetArray.splice(targetIndex, 1);
     const newEntries = lines.map((line) => ({
-      text: line, // ✅ No trim, no filter - preserve exactly as typed
+      text: line,
       tags: originalEntry?.tags || [],
       type: originalEntry?.type || 'p',
       typename: originalEntry?.typename || 'paragraph',
     }));
     targetArray.splice(targetIndex, 0, ...newEntries);
   
-    // ✅ Process the OTHER column if edited - same logic
     if (otherColumnWasEdited) {
       const otherColumnRowIndex = contentRows.findIndex(r => r.id === otherColumnRowId);
       
@@ -226,14 +214,14 @@ const AppContent: React.FC = () => {
         const otherColumnLines = otherColumnText
           .replace(/\r\n/g, '\n')
           .replace(/\r/g, '\n')
-          .split('\n'); // ✅ No filter, no trim
+          .split('\n');
         
         const otherColumnOriginalEntry = otherArray[otherColumnRowIndex];
         
         otherArray.splice(otherColumnRowIndex, 1);
         
         const otherNewEntries = otherColumnLines.map((line) => ({
-          text: line, // ✅ Preserve exactly as typed
+          text: line,
           tags: otherColumnOriginalEntry?.tags || [],
           type: otherColumnOriginalEntry?.type || 'p',
           typename: otherColumnOriginalEntry?.typename || 'paragraph',
@@ -243,7 +231,10 @@ const AppContent: React.FC = () => {
       }
     }
   
-    const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
+    let newRows = reconstructRows(paliArray, kannadaArray, contentRows);
+    
+    // ✅ Remove trailing empty rows after edit
+    newRows = removeTrailingEmptyRows(newRows);
     
     addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
     setContentRows(newRows);
@@ -306,9 +297,9 @@ const AppContent: React.FC = () => {
   
     // ✅ Reconstruct rows - kannadaArray stays intact!
     const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
-    
-    addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-    setContentRows(newRows);
+    const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
+    addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds); // ✅ Use cleanedRows
+    setContentRows(cleanedRows); // ✅ Use cleanedRows
     messageApi.success(`Pali rows merged successfully!`);
     
     const mergedRowIndex = direction === 'prev' ? targetIndex : currentIndex;
@@ -367,9 +358,9 @@ const AppContent: React.FC = () => {
   
     // ✅ Reconstruct rows - paliArray stays intact!
     const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
-    
-    addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-    setContentRows(newRows);
+    const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
+    addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds); // ✅ Use cleanedRows
+    setContentRows(cleanedRows);
     messageApi.success(`Kannada rows merged successfully!`);
     
     const mergedRowIndex = direction === 'prev' ? targetIndex : currentIndex;
@@ -424,8 +415,9 @@ const AppContent: React.FC = () => {
     targetArray.splice(firstIndex, 0, mergedEntry);
 
     const newRows = reconstructRows(paliArray, kannadaArray);
-    addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-    setContentRows(newRows);
+    const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
+    addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds);
+    setContentRows(cleanedRows);
 
     if (column === 'pali') {
       setSelectedPaliIds(new Set());
@@ -469,8 +461,9 @@ const AppContent: React.FC = () => {
         }
 
         const newRows = reconstructRows(paliArray, kannadaArray);
-        addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
-        setContentRows(newRows);
+        const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
+        addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds);
+        setContentRows(cleanedRows);
 
         if (column === 'pali') {
           setSelectedPaliIds(new Set());
@@ -507,42 +500,6 @@ const AppContent: React.FC = () => {
       }
     });
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, modalApi, setSelectedPaliIds, setSelectedKannadaIds]);
-
-  const isRowEmpty = ({ 
-    kannadaTags = [], kannadaText = "", kannadaType = "", kannadaTypename = "", paliTags = [], paliText = "", paliType = "", paliTypename = "",
-  }: ContentRow) => {
-
-    if (kannadaTags.length === 0 && kannadaText === "" && kannadaType === "" && kannadaTypename === "" &&
-      paliTags.length === 0 && paliText === "" && paliType === "" && paliTypename === "") {
-        console.log("------", true, "----------")
-      } else {
-        console.log("------", false, "----------", kannadaTags.length, kannadaText, kannadaTypename, kannadaType, paliTags, paliText, paliType, paliTypename);
-      }
-    return (
-      kannadaTags.length === 0 && kannadaText === "" && kannadaType === "" && kannadaTypename === "" &&
-      paliTags.length === 0 && paliText === "" && paliType === "" && paliTypename === ""
-    );
-  };
-  
-  
-  const  removeTrailingEmptyRowsLoop = useCallback((contentRows: ContentRow[]) =>{
-    let lastNonEmptyIndex = -1;
-  
-    // Loop backwards from the end of the array
-    for (let i = contentRows.length - 1; i >= 0; i--) {
-      console.log("hello ", i)
-      // If we find a row that is NOT empty...
-      if (!isRowEmpty(contentRows[i])) {
-        // ...we record its index and stop looking.
-        lastNonEmptyIndex = i;
-        break;
-      }
-    }
-  
-    // If we found a non-empty row, slice up to it.
-    // Otherwise, return an empty array (since -1 + 1 = 0).
-    return contentRows.slice(0, lastNonEmptyIndex + 1);
-  }, [])
   
   // Export handler
   const handleExport = useCallback((exportType: 'both' | 'pali' | 'kannada') => {
@@ -550,17 +507,19 @@ const AppContent: React.FC = () => {
       messageApi.warning('No content to export');
       return;
     }
-    console.log({contentRows})
-    const { data, count } = exportData(removeTrailingEmptyRowsLoop(contentRows), exportType);
-
+    
+    // ✅ Use the new function
+    const cleanedRows = removeTrailingEmptyRows(contentRows);
+    const { data, count } = exportData(cleanedRows, exportType);
+  
     if (count === 0) {
       messageApi.warning(`No ${exportType} content to export`);
       return;
     }
-
+  
     downloadJSON(data, `bilingual-alignment-${exportType}`);
     messageApi.success(`${count} row(s) exported successfully!`);
-  }, [contentRows, messageApi, removeTrailingEmptyRowsLoop]);
+  }, [contentRows, messageApi]);
 
   // Clear all handler
   const handleClearAll = useCallback(() => {
@@ -573,6 +532,37 @@ const AppContent: React.FC = () => {
     setIsClearModalVisible(false);
     messageApi.success('All data cleared successfully!');
   }, [clearLocalStorage, setHistory, setHistoryIndex, setSelectedPaliIds, setSelectedKannadaIds, messageApi]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    canUndo: historyIndex > 0,
+    canRedo: historyIndex < history.length - 1,
+    // ✅ Add new shortcuts
+    onSave: () => saveToLocalStorage(contentRows, history, historyIndex),
+    onMergePali: () => handleMerge('pali'),
+    onMergeKannada: () => handleMerge('kannada'),
+    onDeletePaliContent: () => handleDeleteContent('pali'),
+    onDeleteKannadaContent: () => handleDeleteContent('kannada'),
+    onDeleteEntireRows: handleDeleteEntireRows,
+    onAddPaliTags: () => {
+      setCurrentTagColumn('pali');
+      setIsTagModalVisible(true);
+    },
+    onAddKannadaTags: () => {
+      setCurrentTagColumn('kannada');
+      setIsTagModalVisible(true);
+    },
+    onExportPali: () => handleExport('pali'),
+    onExportKannada: () => handleExport('kannada'),
+    onExportBoth: () => handleExport('both'),
+    onClearAll: () => setIsClearModalVisible(true),
+    onClearPaliSelection: () => clearSelection('pali'),
+    onClearKannadaSelection: () => clearSelection('kannada'),
+    hasPaliSelection: selectedPaliIds.size > 0,
+    hasKannadaSelection: selectedKannadaIds.size > 0,
+  });
 
   if (isLoading) {
     return (

@@ -205,6 +205,12 @@ export const TagModal: React.FC<TagModalProps> = ({
             <Select.Option value="paragraph">Paragraph</Select.Option>
             <Select.Option value="stanza">Stanza (Verse)</Select.Option>
             <Select.Option value="(empty)">(Empty)</Select.Option>
+            <Select.Option value="vagga">Vagga</Select.Option>
+            <Select.Option value="nikaya">Nikaya</Select.Option>
+            <Select.Option value="sutta">Sutta</Select.Option>
+            <Select.Option value="subvagga">Sub Vaggaa</Select.Option>
+            <Select.Option value="namotasa">Namo Tasa..</Select.Option>
+            <Select.Option value="samyutta">Samyutta</Select.Option>
             <Select.Option value="commentary">Commentary</Select.Option>
             <Select.Option value="footnote">Footnote</Select.Option>
           </Select>
