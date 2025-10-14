@@ -1,5 +1,5 @@
 "use client";
-
+import path from 'path';
 import React, { useState, useEffect, useCallback } from 'react';
 import { App as AntApp } from 'antd';
 import type { ContentRow } from './types';
@@ -58,6 +58,8 @@ const AppContent: React.FC = () => {
   const [editingRow, setEditingRow] = useState<ContentRow | null>(null);
   const [quickEditRow, setQuickEditRow] = useState<ContentRow | null>(null);
   const [quickEditColumn, setQuickEditColumn] = useState<'pali' | 'kannada'>('pali');
+  const [kannadaFileName, setKannadaFileName] = useState<string>('');
+  const [paliFileName, setPaliFileName] = useState<string>('');
 
   const [isTagModalVisible, setIsTagModalVisible] = useState(false);
   const [currentTagColumn, setCurrentTagColumn] = useState<'pali' | 'kannada'>('pali');
@@ -130,6 +132,9 @@ const AppContent: React.FC = () => {
           const newRows = parseFileContent(content, file.name, column, contentRows);
           addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
           setContentRows(newRows);
+          const nameWithoutExt = path.parse(file.name).name;
+          if (column === 'pali') setPaliFileName(nameWithoutExt);
+          else setKannadaFileName(nameWithoutExt);
           
           const fileType = file.name.endsWith('.json') ? 'JSON' : 'text';
           const rowCount = file.name.endsWith('.json') 
@@ -516,10 +521,10 @@ const AppContent: React.FC = () => {
       messageApi.warning(`No ${exportType} content to export`);
       return;
     }
-  
-    downloadJSON(data, `bilingual-alignment-${exportType}`);
+    console.log(exportType === 'pali' ? paliFileName : kannadaFileName);
+    downloadJSON(data, exportType === 'pali' ? paliFileName : kannadaFileName);
     messageApi.success(`${count} row(s) exported successfully!`);
-  }, [contentRows, messageApi]);
+  }, [contentRows, messageApi, paliFileName, kannadaFileName]);
 
   // Clear all handler
   const handleClearAll = useCallback(() => {

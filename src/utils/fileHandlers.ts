@@ -1,4 +1,4 @@
-import type { ContentRow, ExportedRow, ExportedSingleColumn } from '../types';
+import type { ContentRow, ExportedRow, ExportedSingleColumn, WindowWithFSA } from '../types';
 
 // Generate truly unique ID
 const generateUniqueId = (): string => {
@@ -149,12 +149,60 @@ export const exportData = (
   return { data: dataToExport, count: dataToExport.length };
 };
 
-export const downloadJSON = (data: ExportedRow[] | ExportedSingleColumn[], filename: string) => {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+export const downloadJSON = async (
+  data: ExportedRow[] | ExportedSingleColumn[], 
+  filename: string
+) => {
+  const jsonString = JSON.stringify(data, null, 2);
+  const finalFilename = filename.endsWith('.json') ? filename : `${filename}.json`;
+
+  try {
+    // Check if the File System Access API is supported
+    if ('showSaveFilePicker' in window) {
+      const handle = await (window as WindowWithFSA).showSaveFilePicker({
+        suggestedName: finalFilename,
+        types: [
+          {
+            description: 'JSON Files',
+            accept: { 'application/json': ['.json'] },
+          },
+        ],
+      });
+
+      const writable = await handle.createWritable();
+      await writable.write(jsonString);
+      await writable.close();
+    } else {
+      // Fallback for browsers that don't support the API
+      downloadJSONFallback(jsonString, finalFilename);
+    }
+} catch (err: unknown) {
+    // User cancelled the dialog
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      console.log('Download cancelled by user');
+      return;
+    }
+    
+    // If there's an error, fallback to traditional download
+    console.error('Error saving file:', err);
+    downloadJSONFallback(jsonString, finalFilename);
+  }
+};
+
+// Fallback method for older browsers
+const downloadJSONFallback = (jsonString: string, filename: string) => {
+  const blob = new Blob([jsonString], { 
+    type: 'application/json' 
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${filename}-${Date.now()}.json`;
+  a.download = filename;
+  a.style.display = 'none';
+  
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 };

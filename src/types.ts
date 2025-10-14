@@ -35,3 +35,20 @@ export interface ContentRow {
     type?: string;
     typename?: string;
   }
+
+  export interface FilePickerAcceptType {
+    description?: string;
+    accept: Record<string, string | string[]>;
+  }
+  
+  export interface SaveFilePickerOptions {
+    suggestedName?: string;
+    types?: FilePickerAcceptType[];
+    excludeAcceptAllOption?: boolean;
+    id?: string;
+    startIn?: FileSystemHandle | string; // Using 'string' as a fallback if WellKnownDirectory is not directly available
+  }
+  
+  export interface WindowWithFSA extends Window {
+    showSaveFilePicker: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+  }
