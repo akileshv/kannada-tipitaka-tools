@@ -19,7 +19,9 @@ import { EditModal } from './components/modals/EditModal';
 import { TagModal } from './components/modals/TagModal';
 import { ClearModal } from './components/modals/ClearModal';
 import { AppProviders } from './components/AppProviders';
+import { ErrorBoundary } from './components/ErrorBoundary'; 
 import './styles.css';
+import { FontSizeProvider } from './contexts/FontSizeContext';
 
 setupConsoleOverride();
 
@@ -27,9 +29,10 @@ const AppContent: React.FC = () => {
   const { message: messageApi, modal: modalApi } = AntApp.useApp();
 
   // State management
-  const [contentRows, setContentRows] = useState<ContentRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showUploadSection, setShowUploadSection] = useState(true);
+const [contentRows, setContentRows] = useState<ContentRow[]>([]);
+const [showUploadSection, setShowUploadSection] = useState(true);
+const [isFullViewMode, setIsFullViewMode] = useState(false);
+const [fontSize, setFontSize] = useState<number>(100);
 
   // Custom hooks
   const { loadFromLocalStorage, saveToLocalStorage, clearLocalStorage } = useLocalStorage(messageApi);
@@ -67,13 +70,18 @@ const AppContent: React.FC = () => {
   const [isClearModalVisible, setIsClearModalVisible] = useState(false);
 
   // Load from localStorage on mount
-  useEffect(() => {
-    const { contentRows: savedRows, history: savedHistory, historyIndex: savedIndex } = loadFromLocalStorage();
-    setContentRows(savedRows);
-    setHistory(savedHistory);
-    setHistoryIndex(savedIndex);
-    setIsLoading(false);
-  }, [loadFromLocalStorage, setHistory, setHistoryIndex]);
+useEffect(() => {
+  const { contentRows: savedRows, history: savedHistory, historyIndex: savedIndex } = loadFromLocalStorage();
+  setContentRows(savedRows);
+  setHistory(savedHistory);
+  setHistoryIndex(savedIndex);
+  
+  // ✅ Load font size preference
+  const savedFontSize = localStorage.getItem('font-size-preference');
+  if (savedFontSize) {
+    setFontSize(parseInt(savedFontSize, 10));
+  }
+}, [loadFromLocalStorage, setHistory, setHistoryIndex]);;
 
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
@@ -128,7 +136,13 @@ const AppContent: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result as string;
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
         try {
+
+          if (file.size > MAX_FILE_SIZE) {
+            messageApi.error('File too large. Maximum size is 10MB.');
+            return false;
+          }
           const newRows = parseFileContent(content, file.name, column, contentRows);
           addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
           setContentRows(newRows);
@@ -538,6 +552,12 @@ const AppContent: React.FC = () => {
     messageApi.success('All data cleared successfully!');
   }, [clearLocalStorage, setHistory, setHistoryIndex, setSelectedPaliIds, setSelectedKannadaIds, messageApi]);
 
+  // Font size handler
+const handleFontSizeChange = useCallback((newSize: number) => {
+  setFontSize(newSize);
+  localStorage.setItem('font-size-preference', newSize.toString());
+}, []);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onUndo: handleUndo,
@@ -550,6 +570,7 @@ const AppContent: React.FC = () => {
     onMergeKannada: () => handleMerge('kannada'),
     onDeletePaliContent: () => handleDeleteContent('pali'),
     onDeleteKannadaContent: () => handleDeleteContent('kannada'),
+    onToggleFullView: () => setIsFullViewMode(!isFullViewMode),
     onDeleteEntireRows: handleDeleteEntireRows,
     onAddPaliTags: () => {
       setCurrentTagColumn('pali');
@@ -569,73 +590,100 @@ const AppContent: React.FC = () => {
     hasKannadaSelection: selectedKannadaIds.size > 0,
   });
 
-  if (isLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#0e0f13'
-      }}>
-        <div>Loading...</div>
-      </div>
-    );
-  }
 
   return (
-    <div style={{ padding: '24px', minHeight: '100vh', backgroundColor: '#0e0f13' }}>
-      <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
-        <Header />
+    <div style={{ 
+      padding: isFullViewMode ? '8px' : '24px', 
+      height: isFullViewMode ? '100vh' : 'auto',
+      minHeight: '100vh', 
+      backgroundColor: '#0e0f13',
+      transition: 'padding 0.3s ease',
+      display: isFullViewMode ? 'flex' : 'block',
+      flexDirection: 'column',
+      overflow: isFullViewMode ? 'hidden' : 'visible'
+    }}>
+      <FontSizeProvider fontSize={fontSize}>
+      <div style={{ 
+        maxWidth: isFullViewMode ? '100%' : '1600px', 
+        width: '100%',
+        margin: '0 auto',
+        transition: 'max-width 0.3s ease',
+        flex: isFullViewMode ? 1 : 'none',
+        display: isFullViewMode ? 'flex' : 'block',
+        flexDirection: 'column',
+        overflow: isFullViewMode ? 'hidden' : 'visible'
+      }}>
+        <Header 
+  isFullViewMode={isFullViewMode}
+  onToggleFullView={() => setIsFullViewMode(!isFullViewMode)}
+  fontSize={fontSize}
+  onFontSizeChange={handleFontSizeChange}
+/>
 
-        <UploadSection
-          showUploadSection={showUploadSection}
-          setShowUploadSection={setShowUploadSection}
-          onFileUpload={handleFileUpload}
-        />
+        {!isFullViewMode && (
+          <UploadSection
+            showUploadSection={showUploadSection}
+            setShowUploadSection={setShowUploadSection}
+            onFileUpload={handleFileUpload}
+          />
+        )}
 
-        <ActionPanel
-          hasPaliSelection={selectedPaliIds.size > 0}
-          hasKannadaSelection={selectedKannadaIds.size > 0}
-          selectedPaliCount={selectedPaliIds.size}
-          selectedKannadaCount={selectedKannadaIds.size}
-          onMergePali={() => handleMerge('pali')}
-          onMergeKannada={() => handleMerge('kannada')}
-          onDeletePaliContent={() => handleDeleteContent('pali')}
-          onDeleteKannadaContent={() => handleDeleteContent('kannada')}
-          onAddPaliTags={() => {
-            setCurrentTagColumn('pali');
-            setIsTagModalVisible(true);
-          }}
-          onAddKannadaTags={() => {
-            setCurrentTagColumn('kannada');
-            setIsTagModalVisible(true);
-          }}
-          onDeleteEntireRows={handleDeleteEntireRows}
-          onClearPaliSelection={() => clearSelection('pali')}
-          onClearKannadaSelection={() => clearSelection('kannada')}
-        />
+        {!isFullViewMode && (
+  <ActionPanel
+    hasPaliSelection={selectedPaliIds.size > 0}
+    hasKannadaSelection={selectedKannadaIds.size > 0}
+    selectedPaliCount={selectedPaliIds.size}
+    selectedKannadaCount={selectedKannadaIds.size}
+    onMergePali={() => handleMerge('pali')}
+    onMergeKannada={() => handleMerge('kannada')}
+    onDeletePaliContent={() => handleDeleteContent('pali')}
+    onDeleteKannadaContent={() => handleDeleteContent('kannada')}
+    onAddPaliTags={() => {
+      setCurrentTagColumn('pali');
+      setIsTagModalVisible(true);
+    }}
+    onAddKannadaTags={() => {
+      setCurrentTagColumn('kannada');
+      setIsTagModalVisible(true);
+    }}
+    onDeleteEntireRows={handleDeleteEntireRows}
+    onClearPaliSelection={() => clearSelection('pali')}
+    onClearKannadaSelection={() => clearSelection('kannada')}
+  />
+)}
 
-        <ContentDisplay
-          contentRows={contentRows}
-          selectedPaliIds={selectedPaliIds}
-          selectedKannadaIds={selectedKannadaIds}
-          onSelectAll={(column) => handleSelectAll(column, contentRows)}
-          onCheckboxChange={handleCheckboxChange}
-          onEdit={openEditModal}
-          onQuickEditPali={handleQuickEditPali} // ✅ NEW
-          onQuickEditKannada={handleQuickEditKannada} // ✅ NEW
-          onSave={() => saveToLocalStorage(contentRows, history, historyIndex)}
-          onExport={handleExport}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onClearAll={() => setIsClearModalVisible(true)}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < history.length - 1}
-          historyCount={history.length}
-        />
+        <div style={{ 
+          flex: isFullViewMode ? 1 : 'none',
+          display: isFullViewMode ? 'flex' : 'block',
+          flexDirection: 'column',
+          overflow: isFullViewMode ? 'hidden' : 'visible',
+          minHeight: 0
+        }}>
+          <ContentDisplay
+  contentRows={contentRows}
+  selectedPaliIds={selectedPaliIds}
+  selectedKannadaIds={selectedKannadaIds}
+  onSelectAll={(column) => handleSelectAll(column, contentRows)}
+  onCheckboxChange={handleCheckboxChange}
+  onEdit={openEditModal}
+  onQuickEditPali={handleQuickEditPali}
+  onQuickEditKannada={handleQuickEditKannada}
+  onSave={() => saveToLocalStorage(contentRows, history, historyIndex)}
+  onExport={handleExport}
+  onUndo={handleUndo}
+  onRedo={handleRedo}
+  onClearAll={() => setIsClearModalVisible(true)}
+  canUndo={historyIndex > 0}
+  canRedo={historyIndex < history.length - 1}
+  historyCount={history.length}
+  isFullViewMode={isFullViewMode}
+  fontSize={fontSize} // ✅ ADD THIS
+/>
+        </div>
 
-        <Footer contentRows={contentRows} historyCount={history.length} />
+        {!isFullViewMode && (
+          <Footer contentRows={contentRows} historyCount={history.length} />
+        )}
 
         {/* Modals */}
         <EditModal
@@ -650,15 +698,14 @@ const AppContent: React.FC = () => {
             handleEditSave(rowId, 'kannada', text, otherColumnText, otherColumnRowId)
           }
           onNavigate={handleNavigateRow}
-          onMergePali={handleMergePali}        // ✅ ADD THIS
-          onMergeKannada={handleMergeKannada}  // ✅ ADD THIS
+          onMergePali={handleMergePali}
+          onMergeKannada={handleMergeKannada}
         />
 
         <TagModal
           visible={isTagModalVisible}
           column={currentTagColumn}
           selectedIds={currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds}
-          // ✅ NEW: Pass existing values for edit mode
           existingTags={
             quickEditRow
               ? (currentTagColumn === 'pali' ? quickEditRow.paliTags : quickEditRow.kannadaTags)
@@ -674,7 +721,7 @@ const AppContent: React.FC = () => {
               ? (currentTagColumn === 'pali' ? quickEditRow.paliTypename : quickEditRow.kannadaTypename)
               : ''
           }
-          onClose={handleCloseTagModal} // ✅ Updated
+          onClose={handleCloseTagModal}
           onApply={(tags, type, typename) => {
             const selectedIds = currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds;
             
@@ -706,7 +753,7 @@ const AppContent: React.FC = () => {
             addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
             setContentRows(newRows);
             setIsTagModalVisible(false);
-            setQuickEditRow(null); // ✅ Clear quick edit state
+            setQuickEditRow(null);
             messageApi.success(`Tags and types updated successfully!`);
           }}
         />
@@ -719,6 +766,7 @@ const AppContent: React.FC = () => {
           onCancel={() => setIsClearModalVisible(false)}
         />
       </div>
+      </FontSizeProvider>
     </div>
   );
 };
@@ -726,7 +774,9 @@ const AppContent: React.FC = () => {
 export default function App() {
   return (
     <AppProviders>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </AppProviders>
   );
 }

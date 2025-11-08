@@ -21,6 +21,7 @@ interface UseKeyboardShortcutsProps {
   onClearKannadaSelection?: () => void;
   hasPaliSelection?: boolean;
   hasKannadaSelection?: boolean;
+  onToggleFullView?: () => void;
 }
 
 export const useKeyboardShortcuts = ({
@@ -44,6 +45,7 @@ export const useKeyboardShortcuts = ({
   onClearKannadaSelection,
   hasPaliSelection = false,
   hasKannadaSelection = false,
+  onToggleFullView,
 }: UseKeyboardShortcutsProps) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -99,6 +101,12 @@ export const useKeyboardShortcuts = ({
       if (isMod && e.key === 's') {
         e.preventDefault();
         onSave?.();
+        return;
+      }
+
+      if (e.key === 'F9') {
+        e.preventDefault();
+        onToggleFullView?.();
         return;
       }
 
@@ -260,5 +268,6 @@ export const useKeyboardShortcuts = ({
     hasKannadaSelection,
     onClearPaliSelection,
     onClearKannadaSelection,
+    onToggleFullView,
   ]);
 };

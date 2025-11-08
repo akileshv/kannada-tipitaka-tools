@@ -1,8 +1,9 @@
+import { v7 as uuidv7 } from 'uuid';
 import type { ContentRow, ExportedRow, ExportedSingleColumn, WindowWithFSA } from '../types';
 
 // Generate truly unique ID
 const generateUniqueId = (): string => {
-  return `row-${Date.now()}-${Math.random().toString(36).substring(2, 11)}-${Math.random().toString(36).substring(2, 11)}`;
+  return uuidv7();
 };
 
 export const parseFileContent = (
@@ -15,11 +16,14 @@ export const parseFileContent = (
 
   if (fileName.endsWith('.json')) {
     const jsonData = JSON.parse(content);
-
     if (!Array.isArray(jsonData)) {
       throw new Error('Invalid JSON format. Expected an array.');
     }
 
+    // Validate structure
+    if (jsonData.length > 0 && !('text' in jsonData[0])) {
+      throw new Error('Invalid JSON structure. Expected objects with "text" property.');
+    }
     if (jsonData.length === 0) {
       throw new Error('JSON file is empty.');
     }

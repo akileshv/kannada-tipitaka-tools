@@ -1,4 +1,6 @@
 import type { ContentRow } from '../types';
+import { v7 as uuidv7 } from 'uuid';
+
 
 interface ArrayEntry {
   text: string;
@@ -54,7 +56,7 @@ export const reconstructRows = (
 
 // Generate truly unique ID
 const generateUniqueId = (): string => {
-  return `row-${Date.now()}-${Math.random().toString(36).substring(2, 11)}-${Math.random().toString(36).substring(2, 11)}`;
+  return uuidv7();
 };
 
 export const splitRowText = (

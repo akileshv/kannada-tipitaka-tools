@@ -89,6 +89,7 @@ export const Footer: React.FC<FooterProps> = ({ contentRows, historyCount }) => 
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <div>
             <Title level={5} style={{ color: '#1890ff' }}>General</Title>
+            <Text>• <kbd>F9</kbd> - Toggle Focus Mode</Text><br />
             <Text>• <kbd>{modKey}+S</kbd> - Save progress</Text><br />
             <Text>• <kbd>{modKey}+Z</kbd> - Undo</Text><br />
             <Text>• <kbd>{modKey}+Shift+Z</kbd> or <kbd>{modKey}+Y</kbd> - Redo</Text>

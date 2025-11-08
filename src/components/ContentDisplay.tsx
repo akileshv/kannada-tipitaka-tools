@@ -22,6 +22,8 @@ interface ContentDisplayProps {
   canUndo: boolean;
   canRedo: boolean;
   historyCount: number;
+  isFullViewMode?: boolean;
+  fontSize?: number;
 }
 
 export const ContentDisplay: React.FC<ContentDisplayProps> = ({
@@ -41,34 +43,58 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
   canUndo,
   canRedo,
   historyCount,
+  isFullViewMode = false,
+  fontSize = 100,
 }) => {
   return (
     <Card 
       style={{ 
         boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
-        borderColor: '#303030'
+        borderColor: '#303030',
+        ...(isFullViewMode ? {
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          height: '100%'
+        } : {})
       }}
-      styles={{ body: { padding: '16px' } }}
+      styles={{ 
+        body: { 
+          padding: '16px',
+          ...(isFullViewMode ? {
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            overflow: 'hidden',
+            minHeight: 0
+          } : {})
+        } 
+      }}
     >
       <ColumnHeader
-        selectedPaliCount={selectedPaliIds.size}
-        selectedKannadaCount={selectedKannadaIds.size}
-        totalRows={contentRows.length}
-        onSelectAllPali={() => onSelectAll('pali')}
-        onSelectAllKannada={() => onSelectAll('kannada')}
-      />
+  selectedPaliCount={selectedPaliIds.size}
+  selectedKannadaCount={selectedKannadaIds.size}
+  totalRows={contentRows.length}
+  onSelectAllPali={() => onSelectAll('pali')}
+  onSelectAllKannada={() => onSelectAll('kannada')}
+  isFullViewMode={isFullViewMode}
+  fontSize={fontSize} // ✅ ADD THIS
+/>
 
-      <ActionBar
-        onSave={onSave}
-        onExport={onExport}
-        onUndo={onUndo}
-        onRedo={onRedo}
-        onClearAll={onClearAll}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        historyCount={historyCount}
-        hasContent={contentRows.length > 0}
-      />
+      {!isFullViewMode && (
+        <ActionBar
+          onSave={onSave}
+          onExport={onExport}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onClearAll={onClearAll}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          historyCount={historyCount}
+          hasContent={contentRows.length > 0}
+        />
+      )}
 
       {contentRows.length === 0 ? (
         <Empty
@@ -81,7 +107,13 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
           style={{ padding: '48px' }}
         />
       ) : (
-        <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+        <div style={{ 
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          minHeight: 0,
+          maxHeight: isFullViewMode ? '100%' : '70vh'
+        }}>
           {contentRows.map((row, index) => (
             <ContentRowComponent
               key={row.id}
@@ -98,6 +130,7 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
               onEdit={() => onEdit(row)}
               onQuickEditPali={() => onQuickEditPali(row)}
               onQuickEditKannada={() => onQuickEditKannada(row)}
+              fontSize={fontSize}
             />
           ))}
         </div>

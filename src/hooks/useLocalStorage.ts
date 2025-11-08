@@ -51,6 +51,11 @@ export const useLocalStorage = (
     } catch (error) {
       console.error('Error saving to localStorage:', error);
       messageApi.error('Failed to save progress');
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        messageApi.error('Storage quota exceeded. Try exporting and clearing old data.');
+      } else {
+        throw error;
+      }
     }
   }, [messageApi]);
 
