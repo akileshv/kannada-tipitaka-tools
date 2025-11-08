@@ -1,5 +1,4 @@
 "use client";
-import path from 'path';
 import React, { useState, useEffect, useCallback } from 'react';
 import { App as AntApp } from 'antd';
 import type { ContentRow } from './types';
@@ -19,9 +18,8 @@ import { EditModal } from './components/modals/EditModal';
 import { TagModal } from './components/modals/TagModal';
 import { ClearModal } from './components/modals/ClearModal';
 import { AppProviders } from './components/AppProviders';
-import { ErrorBoundary } from './components/ErrorBoundary'; 
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles.css';
-import { FontSizeProvider } from './contexts/FontSizeContext';
 
 setupConsoleOverride();
 
@@ -29,10 +27,10 @@ const AppContent: React.FC = () => {
   const { message: messageApi, modal: modalApi } = AntApp.useApp();
 
   // State management
-const [contentRows, setContentRows] = useState<ContentRow[]>([]);
-const [showUploadSection, setShowUploadSection] = useState(true);
-const [isFullViewMode, setIsFullViewMode] = useState(false);
-const [fontSize, setFontSize] = useState<number>(100);
+  const [contentRows, setContentRows] = useState<ContentRow[]>([]);
+  const [showUploadSection, setShowUploadSection] = useState(true);
+  const [isFullViewMode, setIsFullViewMode] = useState(false);
+  const [fontSize, setFontSize] = useState<number>(100);
 
   // Custom hooks
   const { loadFromLocalStorage, saveToLocalStorage, clearLocalStorage } = useLocalStorage(messageApi);
@@ -70,18 +68,18 @@ const [fontSize, setFontSize] = useState<number>(100);
   const [isClearModalVisible, setIsClearModalVisible] = useState(false);
 
   // Load from localStorage on mount
-useEffect(() => {
-  const { contentRows: savedRows, history: savedHistory, historyIndex: savedIndex } = loadFromLocalStorage();
-  setContentRows(savedRows);
-  setHistory(savedHistory);
-  setHistoryIndex(savedIndex);
-  
-  // ✅ Load font size preference
-  const savedFontSize = localStorage.getItem('font-size-preference');
-  if (savedFontSize) {
-    setFontSize(parseInt(savedFontSize, 10));
-  }
-}, [loadFromLocalStorage, setHistory, setHistoryIndex]);;
+  useEffect(() => {
+    const { contentRows: savedRows, history: savedHistory, historyIndex: savedIndex } = loadFromLocalStorage();
+    setContentRows(savedRows);
+    setHistory(savedHistory);
+    setHistoryIndex(savedIndex);
+    
+    // Load font size preference
+    const savedFontSize = localStorage.getItem('font-size-preference');
+    if (savedFontSize) {
+      setFontSize(parseInt(savedFontSize, 10));
+    }
+  }, [loadFromLocalStorage, setHistory, setHistoryIndex]);
 
   // Undo/Redo handlers
   const handleUndo = useCallback(() => {
@@ -105,26 +103,19 @@ useEffect(() => {
   }, [performRedo, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
   const handleQuickEditPali = useCallback((row: ContentRow) => {
-    // Select the row
     setSelectedPaliIds(new Set([row.id]));
-    // Set quick edit data
     setQuickEditRow(row);
     setQuickEditColumn('pali');
-    // Open tag modal
     setIsTagModalVisible(true);
   }, [setSelectedPaliIds]);
 
   const handleQuickEditKannada = useCallback((row: ContentRow) => {
-    // Select the row
     setSelectedKannadaIds(new Set([row.id]));
-    // Set quick edit data
     setQuickEditRow(row);
     setQuickEditColumn('kannada');
-    // Open tag modal
     setIsTagModalVisible(true);
   }, [setSelectedKannadaIds]);
 
-  // ✅ UPDATE: Close tag modal handler
   const handleCloseTagModal = useCallback(() => {
     setIsTagModalVisible(false);
     setQuickEditRow(null);
@@ -132,21 +123,24 @@ useEffect(() => {
 
   // File upload handler
   const handleFileUpload = useCallback((file: File, column: 'pali' | 'kannada') => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    if (file.size > MAX_FILE_SIZE) {
+      messageApi.error('File too large. Maximum size is 10MB.');
+      return false;
+    }
+
     try {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result as string;
-        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
         try {
-
-          if (file.size > MAX_FILE_SIZE) {
-            messageApi.error('File too large. Maximum size is 10MB.');
-            return false;
-          }
           const newRows = parseFileContent(content, file.name, column, contentRows);
           addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
           setContentRows(newRows);
-          const nameWithoutExt = path.parse(file.name).name;
+          
+          // Extract filename without extension
+          const nameWithoutExt = file.name.replace(/\.(json|txt)$/i, '');
           if (column === 'pali') setPaliFileName(nameWithoutExt);
           else setKannadaFileName(nameWithoutExt);
           
@@ -197,9 +191,7 @@ useEffect(() => {
     }
   
     const lines = newText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-  
     const otherColumnRow = contentRows.find(r => r.id === otherColumnRowId);
-  
     const otherColumnOriginalText = otherColumnRow 
       ? (column === 'pali' ? otherColumnRow.kannadaText : otherColumnRow.paliText)
       : '';
@@ -236,7 +228,6 @@ useEffect(() => {
           .split('\n');
         
         const otherColumnOriginalEntry = otherArray[otherColumnRowIndex];
-        
         otherArray.splice(otherColumnRowIndex, 1);
         
         const otherNewEntries = otherColumnLines.map((line) => ({
@@ -251,13 +242,10 @@ useEffect(() => {
     }
   
     let newRows = reconstructRows(paliArray, kannadaArray, contentRows);
-    
-    // ✅ Remove trailing empty rows after edit
     newRows = removeTrailingEmptyRows(newRows);
     
     addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
     setContentRows(newRows);
-    
     messageApi.success(`Content saved successfully!`, 3);
     
     if (newRows[targetIndex]) {
@@ -265,7 +253,6 @@ useEffect(() => {
     }
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setEditingRow]);
 
-  // ✅ ADD THESE TWO FUNCTIONS TO APP.TSX
   const handleMergePali = useCallback((currentIndex: number, direction: 'prev' | 'next') => {
     const targetIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
     
@@ -276,18 +263,13 @@ useEffect(() => {
   
     const currentRow = contentRows[currentIndex];
     const targetRow = contentRows[targetIndex];
-  
     if (!currentRow || !targetRow) return;
   
-    // ✅ Use array format to merge only Pali column
     const { paliArray, kannadaArray } = toArrayFormat(contentRows);
-  
-    // Merge Pali texts with space
     const mergedText = direction === 'prev'
       ? `${paliArray[targetIndex]?.text || ''} ${paliArray[currentIndex]?.text || ''}`.trim()
       : `${paliArray[currentIndex]?.text || ''} ${paliArray[targetIndex]?.text || ''}`.trim();
   
-    // Merge Pali tags
     const mergedTags = [
       ...new Set([
         ...(paliArray[currentIndex]?.tags || []),
@@ -295,35 +277,23 @@ useEffect(() => {
       ])
     ];
   
-    // ✅ Modify only paliArray, keep kannadaArray unchanged
     if (direction === 'prev') {
-      // Merge into previous, delete current
-      paliArray[targetIndex] = {
-        ...paliArray[targetIndex],
-        text: mergedText,
-        tags: mergedTags,
-      };
+      paliArray[targetIndex] = { ...paliArray[targetIndex], text: mergedText, tags: mergedTags };
       paliArray.splice(currentIndex, 1);
     } else {
-      // Merge into current, delete next
-      paliArray[currentIndex] = {
-        ...paliArray[currentIndex],
-        text: mergedText,
-        tags: mergedTags,
-      };
+      paliArray[currentIndex] = { ...paliArray[currentIndex], text: mergedText, tags: mergedTags };
       paliArray.splice(targetIndex, 1);
     }
   
-    // ✅ Reconstruct rows - kannadaArray stays intact!
     const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
-    const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
-    addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds); // ✅ Use cleanedRows
-    setContentRows(cleanedRows); // ✅ Use cleanedRows
+    const cleanedRows = removeTrailingEmptyRows(newRows);
+    addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds);
+    setContentRows(cleanedRows);
     messageApi.success(`Pali rows merged successfully!`);
     
     const mergedRowIndex = direction === 'prev' ? targetIndex : currentIndex;
-    if (newRows[mergedRowIndex]) {
-      setEditingRow(newRows[mergedRowIndex]);
+    if (cleanedRows[mergedRowIndex]) {
+      setEditingRow(cleanedRows[mergedRowIndex]);
     }
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setEditingRow]);
   
@@ -337,18 +307,13 @@ useEffect(() => {
   
     const currentRow = contentRows[currentIndex];
     const targetRow = contentRows[targetIndex];
-  
     if (!currentRow || !targetRow) return;
   
-    // ✅ Use array format to merge only Kannada column
     const { paliArray, kannadaArray } = toArrayFormat(contentRows);
-  
-    // Merge Kannada texts with space
     const mergedText = direction === 'prev'
       ? `${kannadaArray[targetIndex]?.text || ''} ${kannadaArray[currentIndex]?.text || ''}`.trim()
       : `${kannadaArray[currentIndex]?.text || ''} ${kannadaArray[targetIndex]?.text || ''}`.trim();
   
-    // Merge Kannada tags
     const mergedTags = [
       ...new Set([
         ...(kannadaArray[currentIndex]?.tags || []),
@@ -356,39 +321,26 @@ useEffect(() => {
       ])
     ];
   
-    // ✅ Modify only kannadaArray, keep paliArray unchanged
     if (direction === 'prev') {
-      // Merge into previous, delete current
-      kannadaArray[targetIndex] = {
-        ...kannadaArray[targetIndex],
-        text: mergedText,
-        tags: mergedTags,
-      };
+      kannadaArray[targetIndex] = { ...kannadaArray[targetIndex], text: mergedText, tags: mergedTags };
       kannadaArray.splice(currentIndex, 1);
     } else {
-      // Merge into current, delete next
-      kannadaArray[currentIndex] = {
-        ...kannadaArray[currentIndex],
-        text: mergedText,
-        tags: mergedTags,
-      };
+      kannadaArray[currentIndex] = { ...kannadaArray[currentIndex], text: mergedText, tags: mergedTags };
       kannadaArray.splice(targetIndex, 1);
     }
   
-    // ✅ Reconstruct rows - paliArray stays intact!
     const newRows = reconstructRows(paliArray, kannadaArray, contentRows);
-    const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
-    addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds); // ✅ Use cleanedRows
+    const cleanedRows = removeTrailingEmptyRows(newRows);
+    addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds);
     setContentRows(cleanedRows);
     messageApi.success(`Kannada rows merged successfully!`);
     
     const mergedRowIndex = direction === 'prev' ? targetIndex : currentIndex;
-    if (newRows[mergedRowIndex]) {
-      setEditingRow(newRows[mergedRowIndex]);
+    if (cleanedRows[mergedRowIndex]) {
+      setEditingRow(cleanedRows[mergedRowIndex]);
     }
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setEditingRow]);
 
-  // Merge handler
   const handleMerge = useCallback((column: 'pali' | 'kannada') => {
     const selectedIds = column === 'pali' ? selectedPaliIds : selectedKannadaIds;
     if (selectedIds.size < 2) {
@@ -397,7 +349,6 @@ useEffect(() => {
     }
 
     const { paliArray, kannadaArray } = toArrayFormat(contentRows);
-
     const selectedIndices = Array.from(selectedIds)
       .map(id => contentRows.findIndex(row => row.id === id))
       .filter(index => index !== -1)
@@ -434,7 +385,7 @@ useEffect(() => {
     targetArray.splice(firstIndex, 0, mergedEntry);
 
     const newRows = reconstructRows(paliArray, kannadaArray);
-    const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
+    const cleanedRows = removeTrailingEmptyRows(newRows);
     addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds);
     setContentRows(cleanedRows);
 
@@ -447,7 +398,6 @@ useEffect(() => {
     messageApi.success(`${column} rows merged successfully!`);
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
-  // Delete content handler
   const handleDeleteContent = useCallback((column: 'pali' | 'kannada') => {
     const selectedIds = column === 'pali' ? selectedPaliIds : selectedKannadaIds;
     if (selectedIds.size === 0) {
@@ -480,7 +430,7 @@ useEffect(() => {
         }
 
         const newRows = reconstructRows(paliArray, kannadaArray);
-        const cleanedRows = removeTrailingEmptyRows(newRows); // ✅ Add this line
+        const cleanedRows = removeTrailingEmptyRows(newRows);
         addToHistory(cleanedRows, selectedPaliIds, selectedKannadaIds);
         setContentRows(cleanedRows);
 
@@ -495,7 +445,6 @@ useEffect(() => {
     });
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, modalApi, setSelectedPaliIds, setSelectedKannadaIds]);
 
-  // Delete entire rows handler
   const handleDeleteEntireRows = useCallback(() => {
     const idsToDelete = new Set([...selectedPaliIds, ...selectedKannadaIds]);
     if (idsToDelete.size === 0) {
@@ -520,14 +469,12 @@ useEffect(() => {
     });
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi, modalApi, setSelectedPaliIds, setSelectedKannadaIds]);
   
-  // Export handler
   const handleExport = useCallback((exportType: 'both' | 'pali' | 'kannada') => {
     if (contentRows.length === 0) {
       messageApi.warning('No content to export');
       return;
     }
     
-    // ✅ Use the new function
     const cleanedRows = removeTrailingEmptyRows(contentRows);
     const { data, count } = exportData(cleanedRows, exportType);
   
@@ -535,12 +482,11 @@ useEffect(() => {
       messageApi.warning(`No ${exportType} content to export`);
       return;
     }
-    console.log(exportType === 'pali' ? paliFileName : kannadaFileName);
+    
     downloadJSON(data, exportType === 'pali' ? paliFileName : kannadaFileName);
     messageApi.success(`${count} row(s) exported successfully!`);
   }, [contentRows, messageApi, paliFileName, kannadaFileName]);
 
-  // Clear all handler
   const handleClearAll = useCallback(() => {
     clearLocalStorage();
     setContentRows([]);
@@ -552,19 +498,16 @@ useEffect(() => {
     messageApi.success('All data cleared successfully!');
   }, [clearLocalStorage, setHistory, setHistoryIndex, setSelectedPaliIds, setSelectedKannadaIds, messageApi]);
 
-  // Font size handler
-const handleFontSizeChange = useCallback((newSize: number) => {
-  setFontSize(newSize);
-  localStorage.setItem('font-size-preference', newSize.toString());
-}, []);
+  const handleFontSizeChange = useCallback((newSize: number) => {
+    setFontSize(newSize);
+    localStorage.setItem('font-size-preference', newSize.toString());
+  }, []);
 
-  // Keyboard shortcuts
   useKeyboardShortcuts({
     onUndo: handleUndo,
     onRedo: handleRedo,
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,
-    // ✅ Add new shortcuts
     onSave: () => saveToLocalStorage(contentRows, history, historyIndex),
     onMergePali: () => handleMerge('pali'),
     onMergeKannada: () => handleMerge('kannada'),
@@ -590,7 +533,6 @@ const handleFontSizeChange = useCallback((newSize: number) => {
     hasKannadaSelection: selectedKannadaIds.size > 0,
   });
 
-
   return (
     <div style={{ 
       padding: isFullViewMode ? '8px' : '24px', 
@@ -602,7 +544,6 @@ const handleFontSizeChange = useCallback((newSize: number) => {
       flexDirection: 'column',
       overflow: isFullViewMode ? 'hidden' : 'visible'
     }}>
-      <FontSizeProvider fontSize={fontSize}>
       <div style={{ 
         maxWidth: isFullViewMode ? '100%' : '1600px', 
         width: '100%',
@@ -614,11 +555,11 @@ const handleFontSizeChange = useCallback((newSize: number) => {
         overflow: isFullViewMode ? 'hidden' : 'visible'
       }}>
         <Header 
-  isFullViewMode={isFullViewMode}
-  onToggleFullView={() => setIsFullViewMode(!isFullViewMode)}
-  fontSize={fontSize}
-  onFontSizeChange={handleFontSizeChange}
-/>
+          isFullViewMode={isFullViewMode}
+          onToggleFullView={() => setIsFullViewMode(!isFullViewMode)}
+          fontSize={fontSize}
+          onFontSizeChange={handleFontSizeChange}
+        />
 
         {!isFullViewMode && (
           <UploadSection
@@ -629,28 +570,28 @@ const handleFontSizeChange = useCallback((newSize: number) => {
         )}
 
         {!isFullViewMode && (
-  <ActionPanel
-    hasPaliSelection={selectedPaliIds.size > 0}
-    hasKannadaSelection={selectedKannadaIds.size > 0}
-    selectedPaliCount={selectedPaliIds.size}
-    selectedKannadaCount={selectedKannadaIds.size}
-    onMergePali={() => handleMerge('pali')}
-    onMergeKannada={() => handleMerge('kannada')}
-    onDeletePaliContent={() => handleDeleteContent('pali')}
-    onDeleteKannadaContent={() => handleDeleteContent('kannada')}
-    onAddPaliTags={() => {
-      setCurrentTagColumn('pali');
-      setIsTagModalVisible(true);
-    }}
-    onAddKannadaTags={() => {
-      setCurrentTagColumn('kannada');
-      setIsTagModalVisible(true);
-    }}
-    onDeleteEntireRows={handleDeleteEntireRows}
-    onClearPaliSelection={() => clearSelection('pali')}
-    onClearKannadaSelection={() => clearSelection('kannada')}
-  />
-)}
+          <ActionPanel
+            hasPaliSelection={selectedPaliIds.size > 0}
+            hasKannadaSelection={selectedKannadaIds.size > 0}
+            selectedPaliCount={selectedPaliIds.size}
+            selectedKannadaCount={selectedKannadaIds.size}
+            onMergePali={() => handleMerge('pali')}
+            onMergeKannada={() => handleMerge('kannada')}
+            onDeletePaliContent={() => handleDeleteContent('pali')}
+            onDeleteKannadaContent={() => handleDeleteContent('kannada')}
+            onAddPaliTags={() => {
+              setCurrentTagColumn('pali');
+              setIsTagModalVisible(true);
+            }}
+            onAddKannadaTags={() => {
+              setCurrentTagColumn('kannada');
+              setIsTagModalVisible(true);
+            }}
+            onDeleteEntireRows={handleDeleteEntireRows}
+            onClearPaliSelection={() => clearSelection('pali')}
+            onClearKannadaSelection={() => clearSelection('kannada')}
+          />
+        )}
 
         <div style={{ 
           flex: isFullViewMode ? 1 : 'none',
@@ -660,32 +601,31 @@ const handleFontSizeChange = useCallback((newSize: number) => {
           minHeight: 0
         }}>
           <ContentDisplay
-  contentRows={contentRows}
-  selectedPaliIds={selectedPaliIds}
-  selectedKannadaIds={selectedKannadaIds}
-  onSelectAll={(column) => handleSelectAll(column, contentRows)}
-  onCheckboxChange={handleCheckboxChange}
-  onEdit={openEditModal}
-  onQuickEditPali={handleQuickEditPali}
-  onQuickEditKannada={handleQuickEditKannada}
-  onSave={() => saveToLocalStorage(contentRows, history, historyIndex)}
-  onExport={handleExport}
-  onUndo={handleUndo}
-  onRedo={handleRedo}
-  onClearAll={() => setIsClearModalVisible(true)}
-  canUndo={historyIndex > 0}
-  canRedo={historyIndex < history.length - 1}
-  historyCount={history.length}
-  isFullViewMode={isFullViewMode}
-  fontSize={fontSize} // ✅ ADD THIS
-/>
+            contentRows={contentRows}
+            selectedPaliIds={selectedPaliIds}
+            selectedKannadaIds={selectedKannadaIds}
+            onSelectAll={(column) => handleSelectAll(column, contentRows)}
+            onCheckboxChange={handleCheckboxChange}
+            onEdit={openEditModal}
+            onQuickEditPali={handleQuickEditPali}
+            onQuickEditKannada={handleQuickEditKannada}
+            onSave={() => saveToLocalStorage(contentRows, history, historyIndex)}
+            onExport={handleExport}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onClearAll={() => setIsClearModalVisible(true)}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < history.length - 1}
+            historyCount={history.length}
+            isFullViewMode={isFullViewMode}
+            fontSize={fontSize}
+          />
         </div>
 
         {!isFullViewMode && (
           <Footer contentRows={contentRows} historyCount={history.length} />
         )}
 
-        {/* Modals */}
         <EditModal
           visible={isEditModalVisible}
           editingRow={editingRow}
@@ -766,7 +706,6 @@ const handleFontSizeChange = useCallback((newSize: number) => {
           onCancel={() => setIsClearModalVisible(false)}
         />
       </div>
-      </FontSizeProvider>
     </div>
   );
 };

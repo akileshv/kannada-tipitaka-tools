@@ -73,14 +73,14 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
       }}
     >
       <ColumnHeader
-  selectedPaliCount={selectedPaliIds.size}
-  selectedKannadaCount={selectedKannadaIds.size}
-  totalRows={contentRows.length}
-  onSelectAllPali={() => onSelectAll('pali')}
-  onSelectAllKannada={() => onSelectAll('kannada')}
-  isFullViewMode={isFullViewMode}
-  fontSize={fontSize} // ✅ ADD THIS
-/>
+        selectedPaliCount={selectedPaliIds.size}
+        selectedKannadaCount={selectedKannadaIds.size}
+        totalRows={contentRows.length}
+        onSelectAllPali={() => onSelectAll('pali')}
+        onSelectAllKannada={() => onSelectAll('kannada')}
+        isFullViewMode={isFullViewMode}
+        fontSize={fontSize}
+      />
 
       {!isFullViewMode && (
         <ActionBar

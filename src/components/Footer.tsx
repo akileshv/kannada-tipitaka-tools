@@ -13,11 +13,13 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ contentRows, historyCount }) => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   
-  // ✅ Detect if user is on Mac
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? 'Cmd' : 'Ctrl';
 
-  if (contentRows.length === 0) return null;
+  // ✅ COMMENTED OUT FOR DEBUGGING - Footer will always render
+  // if (contentRows.length === 0) return null;
+  
+  console.log('🔍 Footer rendering - contentRows:', contentRows.length, 'history:', historyCount);
 
   const taggedCount = contentRows.filter(row => 
     (row.paliTags && row.paliTags.length > 0) || 
@@ -92,7 +94,7 @@ export const Footer: React.FC<FooterProps> = ({ contentRows, historyCount }) => 
             <Text>• <kbd>F9</kbd> - Toggle Focus Mode</Text><br />
             <Text>• <kbd>{modKey}+S</kbd> - Save progress</Text><br />
             <Text>• <kbd>{modKey}+Z</kbd> - Undo</Text><br />
-            <Text>• <kbd>{modKey}+Shift+Z</kbd> or <kbd>{modKey}+Y</kbd> - Redo</Text>
+            <Text>• <kbd>{modKey}+Shift+Z</kbd> or <kbd>{modKey}+Y</kbd> - Redo</Text><br />
             <Text>• <kbd>Esc</kbd> - Clear all selections</Text>
           </div>
 
@@ -116,7 +118,7 @@ export const Footer: React.FC<FooterProps> = ({ contentRows, historyCount }) => 
             <Text>• <kbd>{modKey}+Shift+M</kbd> - Merge Pali rows</Text><br />
             <Text>• <kbd>{modKey}+Shift+D</kbd> - Delete Pali content</Text><br />
             <Text>• <kbd>{modKey}+Shift+T</kbd> - Add Pali tags/type</Text><br />
-            <Text>• <kbd>{modKey}+Shift+P</kbd> - Export Pali only</Text>
+            <Text>• <kbd>{modKey}+Shift+P</kbd> - Export Pali only</Text><br />
             <Text>• <kbd>{modKey}+Shift+C</kbd> - Clear Pali selection</Text>
           </div>
 
@@ -127,7 +129,7 @@ export const Footer: React.FC<FooterProps> = ({ contentRows, historyCount }) => 
             <Text>• <kbd>{modKey}+Shift+K</kbd> - Merge Kannada rows</Text><br />
             <Text>• <kbd>{modKey}+Shift+X</kbd> - Delete Kannada content</Text><br />
             <Text>• <kbd>{modKey}+Shift+G</kbd> - Add Kannada tags/type</Text><br />
-            <Text>• <kbd>{modKey}+Shift+L</kbd> - Export Kannada only</Text>
+            <Text>• <kbd>{modKey}+Shift+L</kbd> - Export Kannada only</Text><br />
             <Text>• <kbd>{modKey}+Shift+N</kbd> - Clear Kannada selection</Text>
           </div>
 
