@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Input, Space, Button, Typography, Tag, Select, Divider } from 'antd';
+import { Modal, Input, Space, Button, Typography, Tag, Select, Divider, Alert, Row, Col } from 'antd';
 import { TagsOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons';
+import type { ColumnMode } from '../../types';
 
 const { Title, Text } = Typography;
 
 interface TagModalProps {
   visible: boolean;
-  column: 'pali' | 'kannada';
+  column: ColumnMode;
   selectedIds: Set<string>;
-  // ✅ New: Existing values for edit mode
   existingTags?: string[];
   existingType?: string;
   existingTypename?: string;
@@ -31,10 +31,9 @@ export const TagModal: React.FC<TagModalProps> = ({
   const [typeInput, setTypeInput] = useState<string>('');
   const [typenameInput, setTypenameInput] = useState<string>('');
 
-  // ✅ Determine if we're in edit mode
   const isEditMode = existingTags.length > 0 || existingType || existingTypename;
+  const isBothMode = column === 'both';
 
-  // ✅ Pre-fill with existing values when modal opens
   useEffect(() => {
     if (visible) {
       setTagItems(existingTags || []);
@@ -69,17 +68,27 @@ export const TagModal: React.FC<TagModalProps> = ({
     }
   };
 
+  const getColumnColor = () => {
+    if (isBothMode) return '#faad14';
+    return column === 'pali' ? '#1890ff' : '#52c41a';
+  };
+
+  const getColumnName = () => {
+    if (isBothMode) return 'Both Columns';
+    return column === 'pali' ? 'Pali' : 'Kannada';
+  };
+
   return (
     <Modal
       title={
         <Space>
           {isEditMode ? (
-            <EditOutlined style={{ color: column === 'pali' ? '#1890ff' : '#52c41a' }} />
+            <EditOutlined style={{ color: getColumnColor() }} />
           ) : (
-            <TagsOutlined style={{ color: column === 'pali' ? '#1890ff' : '#52c41a' }} />
+            <TagsOutlined style={{ color: getColumnColor() }} />
           )}
           <span>
-            {isEditMode ? 'Edit' : 'Add'} Tags and Types - {column === 'pali' ? 'Pali' : 'Kannada'}
+            {isEditMode ? 'Edit' : 'Add'} Tags and Types - {getColumnName()}
           </span>
         </Space>
       }
@@ -92,23 +101,36 @@ export const TagModal: React.FC<TagModalProps> = ({
       okButtonProps={{
         disabled: selectedIds.size === 0,
         style: {
-          backgroundColor: column === 'pali' ? '#1890ff' : '#52c41a',
-          borderColor: column === 'pali' ? '#1890ff' : '#52c41a',
+          backgroundColor: getColumnColor(),
+          borderColor: getColumnColor(),
         }
       }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="large">
+        {/* Both Mode Alert */}
+        {isBothMode && (
+          <Alert
+            message="Bulk Edit Mode - Both Columns"
+            description="Tags, type, and typename will be applied to BOTH Pali and Kannada columns for all selected rows."
+            type="info"
+            showIcon
+            style={{
+              borderLeft: `4px solid ${getColumnColor()}`,
+            }}
+          />
+        )}
+
         {/* Selected Count Info */}
         {selectedIds.size > 0 && (
           <div style={{ 
             padding: '12px', 
             background: isEditMode ? '#2a1f0a' : '#1f1f1f',
             borderRadius: '6px',
-            borderLeft: `3px solid ${column === 'pali' ? '#1890ff' : '#52c41a'}`
+            borderLeft: `3px solid ${getColumnColor()}`
           }}>
             <Text style={{ color: '#e0e3e7' }}>
               {isEditMode && <strong>✏️ Edit Mode: </strong>}
-              <strong>{selectedIds.size}</strong> {column} row{selectedIds.size > 1 ? 's' : ''} selected
+              <strong>{selectedIds.size}</strong> {isBothMode ? 'row' : column} row{selectedIds.size > 1 ? 's' : ''} selected
             </Text>
           </div>
         )}
@@ -132,8 +154,8 @@ export const TagModal: React.FC<TagModalProps> = ({
               onClick={handleAddTag}
               disabled={!tagInput.trim()}
               style={{ 
-                borderColor: column === 'pali' ? '#1890ff' : '#52c41a', 
-                backgroundColor: column === 'pali' ? '#1890ff' : '#52c41a' 
+                borderColor: getColumnColor(), 
+                backgroundColor: getColumnColor() 
               }}
             >
               Add
@@ -150,7 +172,7 @@ export const TagModal: React.FC<TagModalProps> = ({
                     key={index}
                     closable
                     onClose={() => handleRemoveTag(tag)}
-                    color={column === 'pali' ? 'blue' : 'green'}
+                    color={isBothMode ? 'orange' : (column === 'pali' ? 'blue' : 'green')}
                     style={{ marginBottom: '4px' }}
                   >
                     {tag}
@@ -208,7 +230,7 @@ export const TagModal: React.FC<TagModalProps> = ({
             <Select.Option value="vagga">Vagga</Select.Option>
             <Select.Option value="nikaya">Nikaya</Select.Option>
             <Select.Option value="sutta">Sutta</Select.Option>
-            <Select.Option value="subvagga">Sub Vaggaa</Select.Option>
+            <Select.Option value="subvagga">Sub Vagga</Select.Option>
             <Select.Option value="namotasa">Namo Tasa..</Select.Option>
             <Select.Option value="samyutta">Samyutta</Select.Option>
             <Select.Option value="commentary">Commentary</Select.Option>
@@ -221,11 +243,11 @@ export const TagModal: React.FC<TagModalProps> = ({
           padding: '12px', 
           background: '#1f1f1f', 
           borderRadius: '6px',
-          borderLeft: `3px solid ${column === 'pali' ? '#1890ff' : '#52c41a'}`
+          borderLeft: `3px solid ${getColumnColor()}`
         }}>
           <Space direction="vertical" size="small">
             <Text type="secondary">
-              <strong>💡 Note:</strong>
+              <strong>💡 {isBothMode ? 'Bulk Mode' : 'Note'}:</strong>
             </Text>
             {isEditMode ? (
               <>
@@ -238,17 +260,22 @@ export const TagModal: React.FC<TagModalProps> = ({
                 <Text type="secondary" style={{ fontSize: '12px' }}>
                   • Type and Typename will replace current values
                 </Text>
+                {isBothMode && (
+                  <Text type="secondary" style={{ fontSize: '12px', color: '#faad14' }}>
+                    • Changes apply to BOTH Pali and Kannada columns
+                  </Text>
+                )}
               </>
             ) : (
               <>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  • Tags will be added to existing tags (duplicates will be removed)
+                  • Tags will be added to existing tags (duplicates removed)
                 </Text>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
                   • Type and Typename will replace existing values
                 </Text>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  • These attributes will be applied to all selected {column} rows
+                  • These attributes will be applied to all selected {isBothMode ? 'rows in both columns' : `${column} rows`}
                 </Text>
               </>
             )}

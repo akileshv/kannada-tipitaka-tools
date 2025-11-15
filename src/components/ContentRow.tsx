@@ -11,8 +11,8 @@ interface ContentRowProps {
   index: number;
   isPaliSelected: boolean;
   isKannadaSelected: boolean;
-  onPaliCheck: (selectBoth?: boolean) => void;
-  onKannadaCheck: (selectBoth?: boolean) => void;
+  onPaliCheck: (selectBoth?: boolean, isShiftClick?: boolean) => void;
+  onKannadaCheck: (selectBoth?: boolean, isShiftClick?: boolean) => void;
   onEdit: () => void;
   onQuickEditPali?: () => void;
   onQuickEditKannada?: () => void;
@@ -32,26 +32,54 @@ export const ContentRow: React.FC<ContentRowProps> = ({
   fontSize = 100,
 }) => {
   const isAnySelected = isPaliSelected || isKannadaSelected;
-  const fontScale = fontSize / 100; // ✅ Calculate scale factor
+  const fontScale = fontSize / 100;
 
   const handlePaliCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (e.shiftKey) {
+    
+    const isShiftClick = e.shiftKey;
+    const isAltClick = e.altKey;
+    
+    if (isAltClick) {
+      // Alt+Click: Select both columns
       e.preventDefault();
-      onPaliCheck(true);
+      onPaliCheck(true, false);
       return;
     }
-    onPaliCheck(false);
+    
+    if (isShiftClick) {
+      // Shift+Click: Range selection
+      e.preventDefault();
+      onPaliCheck(false, true);
+      return;
+    }
+    
+    // Normal click
+    onPaliCheck(false, false);
   };
 
   const handleKannadaCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (e.shiftKey) {
+    
+    const isShiftClick = e.shiftKey;
+    const isAltClick = e.altKey;
+    
+    if (isAltClick) {
+      // Alt+Click: Select both columns
       e.preventDefault();
-      onKannadaCheck(true);
+      onKannadaCheck(true, false);
       return;
     }
-    onKannadaCheck(false);
+    
+    if (isShiftClick) {
+      // Shift+Click: Range selection
+      e.preventDefault();
+      onKannadaCheck(false, true);
+      return;
+    }
+    
+    // Normal click
+    onKannadaCheck(false, false);
   };
 
   return (
@@ -61,20 +89,20 @@ export const ContentRow: React.FC<ContentRowProps> = ({
         borderBottom: '1px solid #303030',
         borderLeft: isAnySelected ? '2px solid #1890ff' : '2px solid transparent',
         transition: 'all 0.2s ease',
-        padding: `${6 * fontScale}px ${12 * fontScale}px`, // ✅ Scale padding
+        padding: `${6 * fontScale}px ${12 * fontScale}px`,
       }}
     >
       <Row gutter={8 * fontScale} align="top">
         {/* Pali Column */}
         <Col xs={24} md={11}>
           <Space align="start" style={{ width: '100%' }} size="small">
-            <Tooltip title="Click: Select | Shift+Click: Select both">
+            <Tooltip title="Click: Select | Shift+Click: Range | Alt+Click: Both columns">
               <div onClick={handlePaliCheckboxClick} style={{ cursor: 'pointer', paddingTop: `${2 * fontScale}px` }}>
                 <Checkbox
                   checked={isPaliSelected}
                   style={{ 
                     pointerEvents: 'none',
-                    transform: `scale(${fontScale})`, // ✅ Scale checkbox
+                    transform: `scale(${fontScale})`,
                     transformOrigin: 'top left'
                   }}
                 />
@@ -221,13 +249,13 @@ export const ContentRow: React.FC<ContentRowProps> = ({
         {/* Kannada Column */}
         <Col xs={24} md={11}>
           <Space align="start" style={{ width: '100%' }} size="small">
-            <Tooltip title="Click: Select | Shift+Click: Select both">
+            <Tooltip title="Click: Select | Shift+Click: Range | Alt+Click: Both columns">
               <div onClick={handleKannadaCheckboxClick} style={{ cursor: 'pointer', paddingTop: `${2 * fontScale}px` }}>
                 <Checkbox
                   checked={isKannadaSelected}
                   style={{ 
                     pointerEvents: 'none',
-                    transform: `scale(${fontScale})`, // ✅ Scale checkbox
+                    transform: `scale(${fontScale})`,
                     transformOrigin: 'top left'
                   }}
                 />

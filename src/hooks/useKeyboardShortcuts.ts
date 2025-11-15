@@ -13,10 +13,12 @@ interface UseKeyboardShortcutsProps {
   onDeleteEntireRows?: () => void;
   onAddPaliTags?: () => void;
   onAddKannadaTags?: () => void;
+  onAddBothTags?: () => void;
   onExportPali?: () => void;
   onExportKannada?: () => void;
   onExportBoth?: () => void;
   onClearAll?: () => void;
+  onClearAllSelections?: () => void;
   onClearPaliSelection?: () => void;
   onClearKannadaSelection?: () => void;
   hasPaliSelection?: boolean;
@@ -37,10 +39,12 @@ export const useKeyboardShortcuts = ({
   onDeleteEntireRows,
   onAddPaliTags,
   onAddKannadaTags,
+  onAddBothTags,
   onExportPali,
   onExportKannada,
   onExportBoth,
   onClearAll,
+  onClearAllSelections,
   onClearPaliSelection,
   onClearKannadaSelection,
   hasPaliSelection = false,
@@ -59,25 +63,30 @@ export const useKeyboardShortcuts = ({
 
       // ============= CLEAR SELECTIONS =============
       
-      // Escape: Clear all selections
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        if (hasPaliSelection) onClearPaliSelection?.();
-        if (hasKannadaSelection) onClearKannadaSelection?.();
-        return;
-      }
-
-      // Clear Pali Selection: Ctrl/Cmd+Shift+C
+      // ✅ Clear ALL selections: Ctrl+Shift+C
       if (isMod && e.shiftKey && e.key === 'C') {
         e.preventDefault();
-        if (hasPaliSelection) onClearPaliSelection?.();
+        if (hasPaliSelection || hasKannadaSelection) {
+          onClearAllSelections?.();
+        }
         return;
       }
 
-      // Clear Kannada Selection: Ctrl/Cmd+Shift+N
-      if (isMod && e.shiftKey && e.key === 'N') {
+      // ✅ CHANGED: Clear Pali Only: Ctrl+Shift+[
+      if (isMod && e.shiftKey && e.key === '{') {
         e.preventDefault();
-        if (hasKannadaSelection) onClearKannadaSelection?.();
+        if (hasPaliSelection) {
+          onClearPaliSelection?.();
+        }
+        return;
+      }
+
+      // ✅ CHANGED: Clear Kannada Only: Ctrl+Shift+]
+      if (isMod && e.shiftKey && e.key === '}') {
+        e.preventDefault();
+        if (hasKannadaSelection) {
+          onClearKannadaSelection?.();
+        }
         return;
       }
 
@@ -91,7 +100,7 @@ export const useKeyboardShortcuts = ({
       }
 
       // Redo: Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y
-      if ((isMod && e.shiftKey && e.key === 'z') || (isMod && e.key === 'y')) {
+      if ((isMod && e.shiftKey && e.key === 'Z') || (isMod && e.key === 'y')) {
         e.preventDefault();
         if (canRedo) onRedo();
         return;
@@ -104,6 +113,7 @@ export const useKeyboardShortcuts = ({
         return;
       }
 
+      // Toggle Full View: F9
       if (e.key === 'F9') {
         e.preventDefault();
         onToggleFullView?.();
@@ -111,7 +121,6 @@ export const useKeyboardShortcuts = ({
       }
 
       // ============= CONTEXT-AWARE SHORTCUTS =============
-      // These work on whichever column is selected
       
       // Merge: Ctrl/Cmd+M
       if (isMod && !e.shiftKey && e.key === 'm') {
@@ -121,7 +130,6 @@ export const useKeyboardShortcuts = ({
         } else if (hasKannadaSelection && !hasPaliSelection) {
           onMergeKannada?.();
         } else if (hasPaliSelection && hasKannadaSelection) {
-          // Both selected - prioritize Pali
           onMergePali?.();
         }
         return;
@@ -135,7 +143,6 @@ export const useKeyboardShortcuts = ({
         } else if (hasKannadaSelection && !hasPaliSelection) {
           onDeleteKannadaContent?.();
         } else if (hasPaliSelection && hasKannadaSelection) {
-          // Both selected - delete Pali first
           onDeletePaliContent?.();
         }
         return;
@@ -149,8 +156,18 @@ export const useKeyboardShortcuts = ({
         } else if (hasKannadaSelection && !hasPaliSelection) {
           onAddKannadaTags?.();
         } else if (hasPaliSelection && hasKannadaSelection) {
-          // Both selected - prioritize Pali
           onAddPaliTags?.();
+        }
+        return;
+      }
+
+      // ============= BULK OPERATIONS =============
+      
+      // Add Tags to BOTH: Ctrl/Cmd+Shift+B
+      if (isMod && e.shiftKey && e.key === 'B') {
+        e.preventDefault();
+        if (hasPaliSelection || hasKannadaSelection) {
+          onAddBothTags?.();
         }
         return;
       }
@@ -194,7 +211,7 @@ export const useKeyboardShortcuts = ({
         return;
       }
 
-      // Delete Kannada Content: Ctrl/Cmd+Shift+Backspace
+      // Delete Entire Rows: Ctrl/Cmd+Shift+Backspace
       if (isMod && e.shiftKey && e.key === 'Backspace') {
         e.preventDefault();
         if (hasPaliSelection || hasKannadaSelection) {
@@ -203,14 +220,14 @@ export const useKeyboardShortcuts = ({
         return;
       }
 
-      // Add Kannada Tags: Ctrl/Cmd+Shift+G (G for taGs, since T is taken)
+      // Add Kannada Tags: Ctrl/Cmd+Shift+G
       if (isMod && e.shiftKey && e.key === 'G') {
         e.preventDefault();
         if (hasKannadaSelection) onAddKannadaTags?.();
         return;
       }
 
-      // ✅ ADD THIS: Delete Kannada Content: Ctrl/Cmd+Shift+X
+      // Delete Kannada Content: Ctrl/Cmd+Shift+X
       if (isMod && e.shiftKey && e.key === 'X') {
         e.preventDefault();
         if (hasKannadaSelection) onDeleteKannadaContent?.();
@@ -226,7 +243,7 @@ export const useKeyboardShortcuts = ({
         return;
       }
 
-      // Export Kannada: Ctrl/Cmd+Shift+L (L for Language)
+      // Export Kannada: Ctrl/Cmd+Shift+L
       if (isMod && e.shiftKey && e.key === 'L') {
         e.preventDefault();
         onExportKannada?.();
@@ -235,9 +252,7 @@ export const useKeyboardShortcuts = ({
 
       // ============= DANGER ZONE =============
       
-      // Delete Entire Rows: Ctrl/Cmd+Shift+Backspace (already covered above)
-      
-      // Clear All: Ctrl/Cmd+Shift+Delete
+      // Clear All Data: Ctrl/Cmd+Shift+Delete
       if (isMod && e.shiftKey && e.key === 'Delete') {
         e.preventDefault();
         onClearAll?.();
@@ -260,14 +275,16 @@ export const useKeyboardShortcuts = ({
     onDeleteEntireRows,
     onAddPaliTags,
     onAddKannadaTags,
+    onAddBothTags,
     onExportPali,
     onExportKannada,
     onExportBoth,
     onClearAll,
-    hasPaliSelection,
-    hasKannadaSelection,
+    onClearAllSelections,
     onClearPaliSelection,
     onClearKannadaSelection,
+    hasPaliSelection,
+    hasKannadaSelection,
     onToggleFullView,
   ]);
 };

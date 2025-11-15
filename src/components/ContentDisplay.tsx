@@ -10,7 +10,7 @@ interface ContentDisplayProps {
   selectedPaliIds: Set<string>;
   selectedKannadaIds: Set<string>;
   onSelectAll: (column: 'pali' | 'kannada') => void;
-  onCheckboxChange: (id: string, column: 'pali' | 'kannada', selectBoth?: boolean) => void;
+  onCheckboxChange: (id: string, column: 'pali' | 'kannada', selectBoth?: boolean, isShiftClick?: boolean) => void;
   onEdit: (row: ContentRow) => void;
   onQuickEditPali: (row: ContentRow) => void;
   onQuickEditKannada: (row: ContentRow) => void;
@@ -121,11 +121,11 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
               index={index}
               isPaliSelected={selectedPaliIds.has(row.id)}
               isKannadaSelected={selectedKannadaIds.has(row.id)}
-              onPaliCheck={(selectBoth?: boolean) => {
-                onCheckboxChange(row.id, 'pali', selectBoth);
+              onPaliCheck={(selectBoth?: boolean, isShiftClick?: boolean) => {
+                onCheckboxChange(row.id, 'pali', selectBoth, isShiftClick);
               }}
-              onKannadaCheck={(selectBoth?: boolean) => {
-                onCheckboxChange(row.id, 'kannada', selectBoth);
+              onKannadaCheck={(selectBoth?: boolean, isShiftClick?: boolean) => {
+                onCheckboxChange(row.id, 'kannada', selectBoth, isShiftClick);
               }}
               onEdit={() => onEdit(row)}
               onQuickEditPali={() => onQuickEditPali(row)}

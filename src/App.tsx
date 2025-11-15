@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { App as AntApp } from 'antd';
-import type { ContentRow } from './types';
+import type { ContentRow, ColumnMode } from './types';
 import { setupConsoleOverride } from './utils/consoleOverride';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useHistory } from './hooks/useHistory';
@@ -58,12 +58,11 @@ const AppContent: React.FC = () => {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingRow, setEditingRow] = useState<ContentRow | null>(null);
   const [quickEditRow, setQuickEditRow] = useState<ContentRow | null>(null);
-  const [quickEditColumn, setQuickEditColumn] = useState<'pali' | 'kannada'>('pali');
   const [kannadaFileName, setKannadaFileName] = useState<string>('');
   const [paliFileName, setPaliFileName] = useState<string>('');
 
   const [isTagModalVisible, setIsTagModalVisible] = useState(false);
-  const [currentTagColumn, setCurrentTagColumn] = useState<'pali' | 'kannada'>('pali');
+  const [currentTagColumn, setCurrentTagColumn] = useState<ColumnMode>('pali');
 
   const [isClearModalVisible, setIsClearModalVisible] = useState(false);
 
@@ -74,7 +73,6 @@ const AppContent: React.FC = () => {
     setHistory(savedHistory);
     setHistoryIndex(savedIndex);
     
-    // Load font size preference
     const savedFontSize = localStorage.getItem('font-size-preference');
     if (savedFontSize) {
       setFontSize(parseInt(savedFontSize, 10));
@@ -105,14 +103,14 @@ const AppContent: React.FC = () => {
   const handleQuickEditPali = useCallback((row: ContentRow) => {
     setSelectedPaliIds(new Set([row.id]));
     setQuickEditRow(row);
-    setQuickEditColumn('pali');
+    setCurrentTagColumn('pali');
     setIsTagModalVisible(true);
   }, [setSelectedPaliIds]);
 
   const handleQuickEditKannada = useCallback((row: ContentRow) => {
     setSelectedKannadaIds(new Set([row.id]));
     setQuickEditRow(row);
-    setQuickEditColumn('kannada');
+    setCurrentTagColumn('kannada');
     setIsTagModalVisible(true);
   }, [setSelectedKannadaIds]);
 
@@ -123,7 +121,7 @@ const AppContent: React.FC = () => {
 
   // File upload handler
   const handleFileUpload = useCallback((file: File, column: 'pali' | 'kannada') => {
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     
     if (file.size > MAX_FILE_SIZE) {
       messageApi.error('File too large. Maximum size is 10MB.');
@@ -139,7 +137,6 @@ const AppContent: React.FC = () => {
           addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
           setContentRows(newRows);
           
-          // Extract filename without extension
           const nameWithoutExt = file.name.replace(/\.(json|txt)$/i, '');
           if (column === 'pali') setPaliFileName(nameWithoutExt);
           else setKannadaFileName(nameWithoutExt);
@@ -164,7 +161,6 @@ const AppContent: React.FC = () => {
     return false;
   }, [contentRows, selectedPaliIds, selectedKannadaIds, addToHistory, messageApi]);
 
-  // Edit modal handlers
   const openEditModal = useCallback((row: ContentRow) => {
     setEditingRow(row);
     setIsEditModalVisible(true);
@@ -498,10 +494,36 @@ const AppContent: React.FC = () => {
     messageApi.success('All data cleared successfully!');
   }, [clearLocalStorage, setHistory, setHistoryIndex, setSelectedPaliIds, setSelectedKannadaIds, messageApi]);
 
+  const handleClearPaliSelection = useCallback(() => {
+    clearSelection('pali');
+    messageApi.info('Pali selection cleared');
+  }, [clearSelection, messageApi]);
+
+  const handleClearKannadaSelection = useCallback(() => {
+    clearSelection('kannada');
+    messageApi.info('Kannada selection cleared');
+  }, [clearSelection, messageApi]);
+
   const handleFontSizeChange = useCallback((newSize: number) => {
     setFontSize(newSize);
     localStorage.setItem('font-size-preference', newSize.toString());
   }, []);
+
+  // ✅ NEW: Clear all selections
+  const handleClearAllSelections = useCallback(() => {
+    clearSelection('both');
+    messageApi.info('All selections cleared');
+  }, [clearSelection, messageApi]);
+
+  // ✅ NEW: Add tags to both columns
+  const handleAddBothTags = useCallback(() => {
+    if (selectedPaliIds.size === 0 && selectedKannadaIds.size === 0) {
+      messageApi.warning('Please select at least one row');
+      return;
+    }
+    setCurrentTagColumn('both');
+    setIsTagModalVisible(true);
+  }, [selectedPaliIds.size, selectedKannadaIds.size, messageApi]);
 
   useKeyboardShortcuts({
     onUndo: handleUndo,
@@ -523,12 +545,14 @@ const AppContent: React.FC = () => {
       setCurrentTagColumn('kannada');
       setIsTagModalVisible(true);
     },
+    onAddBothTags: handleAddBothTags,
     onExportPali: () => handleExport('pali'),
     onExportKannada: () => handleExport('kannada'),
     onExportBoth: () => handleExport('both'),
     onClearAll: () => setIsClearModalVisible(true),
-    onClearPaliSelection: () => clearSelection('pali'),
-    onClearKannadaSelection: () => clearSelection('kannada'),
+    onClearAllSelections: handleClearAllSelections,
+    onClearPaliSelection: handleClearPaliSelection, 
+    onClearKannadaSelection: handleClearKannadaSelection,
     hasPaliSelection: selectedPaliIds.size > 0,
     hasKannadaSelection: selectedKannadaIds.size > 0,
   });
@@ -587,9 +611,11 @@ const AppContent: React.FC = () => {
               setCurrentTagColumn('kannada');
               setIsTagModalVisible(true);
             }}
+            onAddBothTags={handleAddBothTags}
             onDeleteEntireRows={handleDeleteEntireRows}
             onClearPaliSelection={() => clearSelection('pali')}
             onClearKannadaSelection={() => clearSelection('kannada')}
+            onClearAllSelections={handleClearAllSelections}
           />
         )}
 
@@ -605,7 +631,9 @@ const AppContent: React.FC = () => {
             selectedPaliIds={selectedPaliIds}
             selectedKannadaIds={selectedKannadaIds}
             onSelectAll={(column) => handleSelectAll(column, contentRows)}
-            onCheckboxChange={handleCheckboxChange}
+            onCheckboxChange={(id, column, selectBoth, isShiftClick) => 
+              handleCheckboxChange(id, column, selectBoth || false, isShiftClick || false, contentRows)
+            }
             onEdit={openEditModal}
             onQuickEditPali={handleQuickEditPali}
             onQuickEditKannada={handleQuickEditKannada}
@@ -645,56 +673,75 @@ const AppContent: React.FC = () => {
         <TagModal
           visible={isTagModalVisible}
           column={currentTagColumn}
-          selectedIds={currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds}
+          selectedIds={
+            currentTagColumn === 'both' 
+              ? new Set([...selectedPaliIds, ...selectedKannadaIds])
+              : currentTagColumn === 'pali' 
+                ? selectedPaliIds 
+                : selectedKannadaIds
+          }
           existingTags={
-            quickEditRow
+            quickEditRow && currentTagColumn !== 'both'
               ? (currentTagColumn === 'pali' ? quickEditRow.paliTags : quickEditRow.kannadaTags)
               : []
           }
           existingType={
-            quickEditRow
+            quickEditRow && currentTagColumn !== 'both'
               ? (currentTagColumn === 'pali' ? quickEditRow.paliType : quickEditRow.kannadaType)
               : ''
           }
           existingTypename={
-            quickEditRow
+            quickEditRow && currentTagColumn !== 'both'
               ? (currentTagColumn === 'pali' ? quickEditRow.paliTypename : quickEditRow.kannadaTypename)
               : ''
           }
           onClose={handleCloseTagModal}
           onApply={(tags, type, typename) => {
-            const selectedIds = currentTagColumn === 'pali' ? selectedPaliIds : selectedKannadaIds;
-            
             const newRows = contentRows.map(row => {
-              if (selectedIds.has(row.id)) {
-                const updatedRow = { ...row };
-                
-                if (currentTagColumn === 'pali') {
-                  if (tags.length > 0) {
-                    const existingTags = row.paliTags || [];
-                    updatedRow.paliTags = [...new Set([...existingTags, ...tags])];
-                  }
-                  if (type) updatedRow.paliType = type;
-                  if (typename) updatedRow.paliTypename = typename;
-                } else {
-                  if (tags.length > 0) {
-                    const existingTags = row.kannadaTags || [];
-                    updatedRow.kannadaTags = [...new Set([...existingTags, ...tags])];
-                  }
-                  if (type) updatedRow.kannadaType = type;
-                  if (typename) updatedRow.kannadaTypename = typename;
-                }
-                
-                return updatedRow;
+              const shouldUpdatePali = 
+                (currentTagColumn === 'pali' || currentTagColumn === 'both') && 
+                selectedPaliIds.has(row.id);
+              
+              const shouldUpdateKannada = 
+                (currentTagColumn === 'kannada' || currentTagColumn === 'both') && 
+                selectedKannadaIds.has(row.id);
+
+              if (!shouldUpdatePali && !shouldUpdateKannada) {
+                return row;
               }
-              return row;
+
+              const updatedRow = { ...row };
+              
+              if (shouldUpdatePali) {
+                if (tags.length > 0) {
+                  const existingTags = row.paliTags || [];
+                  updatedRow.paliTags = [...new Set([...existingTags, ...tags])];
+                }
+                if (type) updatedRow.paliType = type;
+                if (typename) updatedRow.paliTypename = typename;
+              }
+              
+              if (shouldUpdateKannada) {
+                if (tags.length > 0) {
+                  const existingTags = row.kannadaTags || [];
+                  updatedRow.kannadaTags = [...new Set([...existingTags, ...tags])];
+                }
+                if (type) updatedRow.kannadaType = type;
+                if (typename) updatedRow.kannadaTypename = typename;
+              }
+              
+              return updatedRow;
             });
 
             addToHistory(newRows, selectedPaliIds, selectedKannadaIds);
             setContentRows(newRows);
             setIsTagModalVisible(false);
             setQuickEditRow(null);
-            messageApi.success(`Tags and types updated successfully!`);
+            
+            const columnText = currentTagColumn === 'both' 
+              ? 'both columns' 
+              : currentTagColumn;
+            messageApi.success(`Tags and types updated for ${columnText} successfully!`);
           }}
         />
 
